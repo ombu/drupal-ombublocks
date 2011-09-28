@@ -1,0 +1,75 @@
+<?php
+
+/**
+ * @file Provides draggable blocks
+ *
+ */
+
+/**
+ * Implements hook_init().
+ */
+function ombublocks_init() {
+}
+
+/**
+ * Implements hook_menu().
+ */
+function ombublocks_menu() {
+  $items['admin/structure/block/manage/%/%/arrange'] = array(
+    'title' => 'Arrange block',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'context' => MENU_CONTEXT_INLINE,
+    'page callback' => '_ombublocks_foo',
+  );
+  $items['admin/ombublocks/list'] = array(
+    'title' => 'View ombublocks',
+    'page callback' => 'ombublocks_list',
+    'access arguments' => array('administer blocks'),
+  );
+  $items['node/%node/ombublocks'] = array(
+    'title' => 'Manage Blocks',
+    'page callback' => 'ombublocks_list',
+    'access arguments' => array('administer blocks'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 10,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_preprocess_block().
+ */
+function ombublocks_preprocess_block(&$variables) {
+  global $user;
+  $variables['classes_array'][] = 'ombublock';
+  if(user_access('arrange blocks', $user)) {
+    //$variables['classes_array'][] = 'draggable';
+  }
+}
+
+/**
+ * Module functions below
+ */
+
+/**
+ * Lists ombublocks defined by hook_ombublock_info
+ * @param string $region
+ *      Optional. Limit list to a given region
+ */
+function ombublocks_list($region = NULL) {
+    $ombublocks = array();
+    foreach (module_implements('ombublock_info') as $module) {
+      $module_blocks = module_invoke($module, 'ombublock_info');
+      foreach ($module_blocks as $source => $title) {
+        $ombublocks['links'][$source]['title'] = $title;
+        $ombublocks['links'][$source]['href'] = '#';
+      }
+    }
+    return theme('links', $ombublocks);
+}
+
+function ombublocks_ombublock_info() {
+  // naming convention is MODULE__DELTA
+  $ombublocks['user__new'] = t('New users');
+  return $ombublocks;
+}

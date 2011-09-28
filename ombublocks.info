@@ -1,0 +1,7 @@
+; $Id$
+name = "ombublocks"
+description = "Block management that doesn't suck"
+package = "OMBU"
+core = 7.x
+php = 5.3
+scripts[] = js/ombublocks.js
