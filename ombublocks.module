@@ -209,7 +209,7 @@ function ombublocks_form_node_form_alter(&$form, $form_state) {
       '#group' => 'additional_settings',
       '#tree' => FALSE,
       '#attached' => array(
-        'js' => array(drupal_get_path('module', 'ombublocks') . '/ombublocks.admin.js'),
+        'js' => array(drupal_get_path('module', 'ombublocks') . '/js/ombublocks.admin.js'),
       ),
       '#attributes' => array(
         'class' => array('ombublocks-node-settings-form'),
@@ -773,7 +773,7 @@ function _ombublocks_js_init() {
   static $initialized;
 
   if (!$initialized) {
-    drupal_add_js(drupal_get_path('module', 'ombublocks') . '/ombublocks.js');
+    drupal_add_js(drupal_get_path('module', 'ombublocks') . '/js/ombublocks.js');
 
     $context = _ombublocks_get_active_context();
     if ($context) {
