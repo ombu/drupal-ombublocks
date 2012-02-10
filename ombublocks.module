@@ -1,10 +1,27 @@
 <?php
-
 /**
  * @file Provides draggable blocks
  *
+ * 1) Provides hook to define reusable block types
+ *    - User can create "instaces" instances of these blocks and assign to
+ *      regions like any other block. These instances are plain Drupal
+ *      blocks.
+ * 2) Adds ability to edit blocks via context menu & overlay
+ * 3) Adds ability to set block weights within a region via drag & drop
  */
 
+/**
+ * Define the types of context inheritance to provide.
+ */
+define('OMBUBLOCKS_INHERIT_NONE', 0);
+define('OMBUBLOCKS_INHERIT_DEFAULT', 1);
+define('OMBUBLOCKS_INHERIT_PARENT', 2);
+// @todo: this should be an admin page and a setting.
+define('OMBUBLOCKS_DEFAULT_CONTEXT', 'ombublocks-default');
+
+/**
+ * Hook Implementations
+ */
 /**
  * Implements hook_init().
  */
@@ -16,24 +33,116 @@ function ombublocks_init() {
  */
 function ombublocks_menu() {
   $items['admin/structure/block/manage/%/%/arrange'] = array(
-    'title' => 'Arrange block',
-    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'title' => 'Move',
+    'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_INLINE,
-    'page callback' => '_ombublocks_foo',
+    'page callback' => '_ombublocks_move',
+    'page arguments' => array(4, 5),
+    'access callback' => 'ombublocks_is_ombublock',
+    'access arguments' => array(4, 5),
+    'weight' => -9,
+  );
+
+  $items['admin/ombublocks/add'] = array(
+    'title' => 'Add Block',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ombublock_add_form', 3),
+    'access arguments' => array('add ombublocks'),
   );
   $items['admin/ombublocks/list'] = array(
     'title' => 'View ombublocks',
-    'page callback' => 'ombublocks_list',
-    'access arguments' => array('administer blocks'),
+    'page callback' => 'ombublocks_get_link_list',
+    'access arguments' => array('add ombublocks'),
   );
-  $items['node/%node/ombublocks'] = array(
-    'title' => 'Manage Blocks',
-    'page callback' => 'ombublocks_list',
-    'access arguments' => array('administer blocks'),
-    'type' => MENU_LOCAL_TASK,
-    'weight' => 10,
+  $items['admin/ombublocks-save-weights'] = array(
+    'title' => 'View ombublocks',
+    'page callback' => '_ombublocks_save_weights',
+    'access arguments' => array('arrange ombublocks'),
   );
   return $items;
+}
+
+/**
+ * Implements hook_menu_alter().
+ */
+function ombublocks_menu_alter(&$items) {
+  if (module_exists('entity_translation')) {
+    $items['block/%bean_delta/translate']['context'] = MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE;
+  }
+  $items['admin/structure/block/manage/%/%/delete']['title'] = t('Delete');
+  $items['admin/structure/block/manage/%/%/delete']['type'] = MENU_LOCAL_TASK;
+  $items['admin/structure/block/manage/%/%/delete']['context'] = MENU_CONTEXT_INLINE;
+  $items['admin/structure/block/manage/%/%/delete']['page callback'] = '_ombublocks_delete';
+  $items['admin/structure/block/manage/%/%/delete']['page arguments'] = array(4, 5);
+  $items['admin/structure/block/manage/%/%/delete']['access callback'] = 'ombublocks_is_ombublock';
+  $items['admin/structure/block/manage/%/%/delete']['access arguments'] = array(4, 5);
+}
+
+/**
+ * Implements hook_menu_local_tasks_alter().
+ */
+function ombublocks_menu_local_tasks_alter(&$data, $router_item, $root_path) {
+  // Add "Add a Block" link to all pages that aren't admin paths.
+  if (user_access('add ombublocks') && !path_is_admin(current_path())) {
+    if (!$data['tabs']) {
+      $data['tabs'][0] = array(
+        'count' => 0,
+        'output' => array(),
+      );
+    }
+
+    $context = _ombublocks_get_active_context();
+    $data['tabs'][0]['output'][] = array(
+      '#theme' => 'menu_local_task',
+      '#link' => array(
+        'title' => t('Add Block'),
+        'href' => 'admin/ombublocks/add/' . ($context ? $context->name : ''),
+        'localized_options' => array(
+          'query' => drupal_get_destination(),
+          'attributes' => array(
+            'title' => t('Add a new block to this page'),
+          ),
+        ),
+      ),
+    );
+    $data['tabs'][0]['count']++;
+
+    // Make sure the Add Block link shows up even for pages that don't have local
+    // tasks
+    if ($data['tabs'][0]['count'] == 1) {
+      $data['tabs'][0]['count']++;
+    }
+  }
+
+}
+
+
+/**
+ * Implements hook_module_implements_alter().
+ */
+function ombublocks_module_implements_alter(&$implementations, $hook) {
+  if ($hook == 'menu_alter') {
+    $group = $implementations['ombublocks'];
+    unset($implementations['ombublocks']);
+    $implementations['ombublocks'] = $group;
+  }
+}
+
+/**
+ * Implements hook_permission().
+ */
+function ombublocks_permission() {
+  return array(
+    'administer ombublocks' => array(
+      'title' => t('Administer ombublocks'),
+    ),
+    'arrange ombublocks' => array(
+      'title' => t('Arrange ombublocks'),
+    ),
+    'add ombublocks' => array(
+      'title' => t('Add new ombublocks'),
+    ),
+  );
 }
 
 /**
@@ -42,34 +151,635 @@ function ombublocks_menu() {
 function ombublocks_preprocess_block(&$variables) {
   global $user;
   $variables['classes_array'][] = 'ombublock';
-  if(user_access('arrange blocks', $user)) {
+  if(user_access('arrange ombublocks', $user) && _ombublocks_has_block_access()) {
+    _ombublocks_js_init();
     //$variables['classes_array'][] = 'draggable';
+  }
+
+  // Hide contextual links for all blocks except ombublocks.
+  if (!ombublocks_is_ombublock($variables['block']->module, $variables['block']->delta) || !_ombublocks_has_block_access()) {
+    $variables['title_suffix']['contextual_links']['#access'] = FALSE;
   }
 }
 
 /**
- * Module functions below
+ * Implements hook_ombublocks_info().
+ */
+function ombublocks_ombublocks_info() {
+  // naming convention is MODULE__DELTA
+  $blocks = array(
+    'stand_newsletter__newsletter'  => t('Newsletter Block'),
+  );
+  return $blocks;
+
+  // All beans are ombublocks for now, so don't include all beans in block info.
+  $beans = bean_get_all_beans();
+  $bean_types = ombublocks_get_types();
+  foreach ($beans as $bean) {
+    if (array_key_exists($bean->type, $bean_types)) {
+      $blocks['bean__' . $bean->delta] = $bean->label;
+    }
+  }
+  return $blocks;
+}
+
+/**
+ * Implements hook_admin_paths().
+ */
+function ombublocks_admin_paths() {
+  return array(
+    'node/*/add-block' => TRUE,
+    'taxonomy/term/*/add-block' => TRUE,
+  );
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ */
+function ombublocks_form_node_form_alter(&$form, $form_state) {
+  // Add option to select custom contexts for new pages.
+  // @todo: should add an option to limit by node type.
+  if (!$form['nid']['#value'] && !in_array($form['type']['#value'], array('blog_post'))) {
+    $form['ombublocks'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Initial page layout'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#access' => user_access('add ombublocks'),
+      '#group' => 'additional_settings',
+      '#tree' => FALSE,
+      '#attached' => array(
+        'js' => array(drupal_get_path('module', 'ombublocks') . '/ombublocks.admin.js'),
+      ),
+      '#attributes' => array(
+        'class' => array('ombublocks-node-settings-form'),
+      ),
+    );
+
+    $description = <<<EOD
+    <p>
+    Select the block layout to use for this new page.  The available options are:
+    </p>
+    <dl>
+      <dt><strong>New blank layout</strong></dt>
+      <dd>A blank layout will be created for this page that contains no blocks.</dd>
+      <dt><strong>Default layout</strong></dt>
+      <dd>This page will inherit the block layout from the default layout page.</dd>
+      <dt><strong>Inherit from menu parent</strong></dt>
+      <dd>This page will inherit the block layout from the parent menu item.  <em>This will only be available if the "Provide a menu link" option has been set in the "Menu settings" tab</em>.</dd>
+    </dl>
+EOD;
+
+    $form['ombublocks']['ombublocks_layout'] = array(
+      '#title' => t('Layout'),
+      '#type' => 'select',
+      '#options' => array(
+        OMBUBLOCKS_INHERIT_NONE => 'New blank layout',
+        OMBUBLOCKS_INHERIT_DEFAULT => 'Default layout',
+        OMBUBLOCKS_INHERIT_PARENT => 'Inherited from menu parent',
+      ),
+      '#description' => $description,
+      '#default_value' => OMBUBLOCKS_INHERIT_DEFAULT,
+    );
+  }
+}
+
+/**
+ * Implements hook_node_insert().
+ */
+function ombublocks_node_insert($node) {
+  // Create a new context for this node.
+  _ombublocks_create_path_context('node/' . $node->nid, isset($node->ombublocks_layout) ? $node->ombublocks_layout : NULL);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function ombublocks_form_bean_delete_confirm_alter(&$form, $form_state) {
+  // Add callback to delete bean from context.
+  if (isset($_GET['destination'])) {
+    $form['#context'] = 'ombublocks-' . _ombublocks_normalize_path($_GET['destination']);
+    $form['#submit'][] = '_ombublocks_delete_submit';
+  }
+}
+
+/**
+ * Forms
  */
 
 /**
- * Lists ombublocks defined by hook_ombublock_info
- * @param string $region
- *      Optional. Limit list to a given region
+ * Form for adding ombublocks to a context
  */
-function ombublocks_list($region = NULL) {
-    $ombublocks = array();
-    foreach (module_implements('ombublock_info') as $module) {
-      $module_blocks = module_invoke($module, 'ombublock_info');
-      foreach ($module_blocks as $source => $title) {
-        $ombublocks['links'][$source]['title'] = $title;
-        $ombublocks['links'][$source]['href'] = '#';
-      }
-    }
-    return theme('links', $ombublocks);
+function ombublock_add_form($form, &$form_state, $context_name = '') {
+  if (empty($form_state['next_step'])) {
+    $form['context'] = array(
+      '#type' => 'value',
+      '#value' => $context_name,
+    );
+    $form['destination'] = array(
+      '#type' => 'value',
+      '#value' => $_GET['destination'],
+    );
+
+    $form['block_type'] = array(
+      '#type' => 'select',
+      '#title' => t('Block Type'),
+      '#options' => array('' => 'Select One') + ombublocks_get_static_types() + ombublocks_get_types(),
+      '#description' => t('Choose the type of block you\'d like to add'),
+      '#required' => TRUE,
+    );
+
+    $form['region'] = array(
+      '#title' => t('Region'),
+      '#type' => 'select',
+      '#options' => _ombublocks_get_regions(),
+      '#description' => t('Choose a region for the block. Only regions where
+      you can add blocks are listed.'),
+      '#default_value' => 'content',
+    );
+
+    $form['next'] = array(
+      '#type' => 'submit',
+      '#value' => t('Next'),
+      '#submit' => array('ombublock_add_form_next'),
+    );
+  }
+  else {
+    $bean = bean_create(array('type' => $form_state['type_values']['block_type']));
+    $form_state['bean'] = $bean;
+    module_load_include('inc', 'bean', 'includes/bean.pages');
+    $form['bean_form'] = bean_form(array(), $form_state, $bean, $form_state['type_values']['block_type']);
+    unset($form['bean_form']['actions']);
+
+    // Hide the label
+    $form['bean_form']['label']['#access'] = FALSE;
+    $form['bean_form']['label']['#default_value'] = 'ombucleanup-tempkey';
+
+    $form['save'] = array(
+      '#type' => 'submit',
+      '#value' => t('Add'),
+      '#validate' => array('ombublock_add_form_add_validate'),
+      '#submit' => array('ombublock_add_form_add_submit'),
+    );
+  }
+  return $form;
 }
 
-function ombublocks_ombublock_info() {
-  // naming convention is MODULE__DELTA
-  $ombublocks['user__new'] = t('New users');
+function ombublock_add_form_next($form, &$form_state) {
+  if (!strstr($form_state['values']['block_type'], '__')) {
+    $form_state['next_step'] = TRUE;
+    $form_state['type_values'] = $form_state['values'];
+    $form_state['rebuild'] = TRUE;
+  }
+  else {
+    // Save static block to selected region in the active page context.
+    if ($form_state['values']['context']) {
+      $context = context_load($form_state['values']['context']);
+    }
+    else {
+      $context = _ombublocks_create_path_context($form_state['values']['destination']);
+    }
+
+    list($module, $delta) = explode('__', $form_state['values']['block_type']);
+    $context->reactions['block']['blocks'][$module . '-' . $delta] = array(
+      'module' => $module,
+      'delta' => $delta,
+      'region' => $form_state['values']['region'],
+      'weight' => 0,
+    );
+    context_save($context);
+
+    drupal_set_message(t('Block %title added', array('%title' => $form['block_type']['#options'][$form_state['values']['block_type']])));
+  }
+}
+
+function ombublock_add_form_add_validate($form, &$form_state) {
+  if (isset($form_state['values']['bean'])) {
+    $bean = $form_state['values']['bean'];
+
+    $bean->label = $form_state['values']['label'];
+    $bean->title = $form_state['values']['title'];
+
+    if (isset($form_state['values']['view_mode'])) {
+      $bean->view_mode = $form_state['values']['view_mode'];
+    }
+
+    field_attach_form_validate('bean', $bean, $form, $form_state);
+    $form_state['values']['bean'] = $bean;
+
+    $bean->validate($form_state['values'], $form_state);
+  }
+}
+
+function ombublock_add_form_add_submit($form, &$form_state) {
+  module_load_include('inc', 'bean', 'includes/bean.pages');
+  $bean = $form_state['bean'];
+  entity_form_submit_build_entity('bean', $bean, $form, $form_state);
+
+  // Transform temporary delta key into a readable key.
+  if ($bean->label == 'ombucleanup-tempkey') {
+    if ($bean->title) {
+      $bean->label = $bean->title;
+    }
+    else {
+      $bean->label = $bean->type;
+    }
+  }
+
+  $max_length = 32;
+  // Base it on the label and make sure it isn't too long for the database
+  $bean->delta = drupal_clean_css_identifier(strtolower($bean->label));
+  $bean->delta = substr($bean->delta, 0, $max_length);
+
+  // Check if delta is unique
+  if (bean_load_delta($bean->delta)) {
+    $i = 0;
+    $separator = '-';
+    $original_delta = $bean->delta;
+    do {
+      $unique_suffix = $separator . $i++;
+      $bean->delta = substr($original_delta, 0, $max_length - drupal_strlen($unique_suffix)) . $unique_suffix;
+    } while (bean_load_delta($bean->delta));
+  }
+
+  foreach (module_implements('bean_submit') as $module) {
+    $function = $module . '_bean_submit';
+    $function($bean, $form, $form_state);
+  }
+
+  $bean->setValues($form_state['values']);
+  field_attach_submit('bean', $bean, $form, $form_state);
+  $bean->save();
+
+  $watchdog_args = array('@type' => $bean->type, '%title' => $bean->label);
+  $t_args = array('@type' => $bean->typeName(), '%title' => $bean->label);
+
+  watchdog('bean', '@type: added %title.', $watchdog_args, WATCHDOG_NOTICE, $bean->viewURL());
+  drupal_set_message(t('@type %title has been created.', $t_args));
+
+  // Save bean to selected region in the active page context.
+  if ($form_state['type_values']['context']) {
+    $context = context_load($form_state['type_values']['context']);
+  }
+  else {
+    $context = _ombublocks_create_path_context($form_state['type_values']['destination']);
+  }
+  $context->reactions['block']['blocks']['bean-' . $bean->delta] = array(
+    'module' => 'bean',
+    'delta' => $bean->delta,
+    'region' => $form_state['type_values']['region'],
+    'weight' => 0,
+  );
+  context_save($context);
+}
+
+/**
+ * Public API functions
+ */
+/**
+ * Returns an array of ombublocks defined by hook_ombublocks_info
+ * @return array
+ */
+function ombublocks_get() {
+  $ombublocks = &drupal_static(__FUNCTION__, array());
+  if (empty($ombublocks)) {
+    foreach (module_implements('ombublocks_info') as $module) {
+      $ombublocks = array_merge($ombublocks, module_invoke($module,
+        'ombublocks_info'));
+    }
+  }
   return $ombublocks;
+}
+
+/**
+ * Returns a list of ombublock types
+ */
+function ombublocks_get_types() {
+  $_types = bean_get_types();
+  $types = array();
+  foreach ($_types as $k=>$v) {
+    $types[$k] = $v->getLabel();
+  }
+  drupal_alter('ombublocks_types', $types);
+  return $types;
+}
+
+/**
+ * Returns a list of static block types.
+ *
+ * @todo: make this configurable and hookable.
+ */
+function ombublocks_get_static_types() {
+  $blocks = array(
+    'stand_newsletter__newsletter'  => t('Newsletter Block'),
+  );
+  return $blocks;
+}
+
+/**
+ * Returns a themed link list with ombublocks
+ * @param string $region
+ *      Optional. Limit list to a given region
+ * @return string
+ */
+function ombublocks_get_link_list($region = NULL) {
+  $links = array();
+  foreach (ombublocks_get($region) as $source => $title) {
+    $links['links'][$source]['title'] = $title;
+    $links['links'][$source]['href'] = '#';
+  }
+  return theme('links', $links);
+}
+
+/**
+ * Whether a block is an ombublock
+ *
+ * @param object $bean
+ *
+ * @return bool
+ */
+function ombublocks_bean_is_ombublock($bean) {
+  // All beans are ombublocks for now.
+  return TRUE;
+  // $slug = 'bean' . '__' . $bean->delta;
+  // return array_key_exists($slug, ombublocks_get());
+}
+
+/**
+ * Whether a block is an ombublock
+ *
+ * @param string $module
+ * @param string $delta
+ *
+ * @return bool
+ */
+function ombublocks_is_ombublock($module, $delta) {
+  // All beans are ombublocks.
+  if ($module == 'bean') {
+    return TRUE;
+  }
+  $slug = $module . '__' . $delta;
+  return array_key_exists($slug, ombublocks_get());
+}
+
+/**
+ * Private functions
+ */
+
+/**
+ * Create a new context for the given path.
+ *
+ * @param string $path
+ *   The internal path to create a context for.
+ * @param string $inheritance_type
+ *   The type of context inheritance to do.  The available options are:
+ *     - OMBUBLOCKS_INHERIT_NONE => New blank layout
+ *     - OMBUBLOCKS_INHERIT_DEFAULT => Default layout
+ *     - OMBUBLOCKS_INHERIT_PARENT => Inherited from menu parent
+ *
+ * @return $context
+ *   The fully created context object.
+ *
+ */
+function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_INHERIT_NONE) {
+  // Check to see if context already exists.
+  if ($context = context_load('ombublocks-' . _ombublocks_normalize_path($path))) {
+    return $context;
+  }
+
+  // Create a new context object based on inheritance type.
+  switch ($inheritance_type) {
+    case OMBUBLOCKS_INHERIT_NONE:
+      $context = new stdClass;
+      $context->tag = 'ombublocks';
+      break;
+
+    case OMBUBLOCKS_INHERIT_DEFAULT:
+      $context = context_load(OMBUBLOCKS_DEFAULT_CONTEXT);
+      break;
+
+    case OMBUBLOCKS_INHERIT_PARENT:
+      // Try and find the menu parent.
+      $mlid = db_query_range("SELECT mlid FROM {menu_links} WHERE link_path = :path AND menu_name = :menu_name AND module = 'menu' ORDER BY mlid ASC", 0, 1, array(
+        ':path' => $path,
+         // @todo: this defaults to main-menu, should be more flexible and check
+         // the menu that the path was added to.
+        ':menu_name' => 'main-menu',
+      ))->fetchField();
+
+      $context = FALSE;
+      if ($mlid) {
+        $item = menu_link_load($mlid);
+        $parent = _menu_link_find_parent($item);
+        if ($parent) {
+          $context = context_load('ombublocks-' . _ombublocks_normalize_path($parent['link_path']));
+        }
+      }
+
+      // Default to creating a new context, if parent context doesn't exist.
+      if (!$context) {
+        $context = new stdClass;
+        $context->tag = 'ombublocks';
+      }
+      break;
+  }
+
+  // Normalize path and set as context name.
+  $path_name = _ombublocks_normalize_path($path);
+  $context->name = 'ombublocks-' . $path_name;
+  $context->description = '';
+
+  // Set the path as the only condition.
+  $context->conditions = array(
+    'path' => array(
+      'values' => array(
+        $path => $path,
+      ),
+    ),
+  );
+
+  // If context has been inherited, then duplicate bean blocks.
+  if (isset($context->reactions['block'])) {
+    $blocks = $context->reactions['block']['blocks'];
+    $context->reactions['block']['blocks'] = array();
+    foreach ($blocks as $id => $block) {
+      if ($block['module'] == 'bean') {
+        $bean = bean_load_delta($block['delta']);
+        if ($bean) {
+          $bean->bid = NULL;
+          $bean->delta = NULL;
+          bean_save($bean);
+          $block['delta'] = $bean->delta;
+          $context->reactions['block']['blocks']['bean-' . $bean->delta] = $block;
+        }
+      }
+      else {
+        $context->reactions['block']['blocks'][$id] = $block;
+      }
+    }
+  }
+
+  context_save($context);
+
+  return $context;
+}
+
+/**
+ * Normalize a menu path for use when saving/loading ombublocks contexts.
+ *
+ * @param $path
+ *   A path string, in the form of path/path.
+ *
+ * @return string
+ i   A normalized string for use in context, in the form of path-path.
+ */
+function _ombublocks_normalize_path($path) {
+  return str_replace('/', '-', $path);
+}
+
+/**
+ * Get the active context for the current page.
+ */
+function _ombublocks_get_active_context() {
+  // Get the namespace for the active ombublocks context.
+  $contexts = context_active_contexts();
+  foreach($contexts as $context) {
+    if ($context->tag == 'ombublocks') {
+      return $context;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Delete an ombublock. Renders the block_custom_block_delete form. This
+ * function is a placeholder in case we want to do a bit more later.
+ *
+ * @return form array
+ */
+function _ombublocks_delete($module, $delta) {
+  switch ($module) {
+    // Block is a bean, delete bean since it's only on this page.
+    case 'bean':
+      $bean = bean_load_delta($delta);
+      module_load_include('inc', 'bean', 'includes/bean.pages');
+      $form = drupal_get_form('bean_delete_confirm', $bean);
+      return $form;
+      break;
+
+    // Otherwise remove block from context.
+    default:
+      if (isset($_GET['destination'])) {
+        $context = context_load('ombublocks-' . _ombublocks_normalize_path($_GET['destination']));
+        if ($context) {
+          foreach($context->reactions['block']['blocks'] as $key => $value) {
+            if ($value['module'] == $module && $value['delta'] == $delta) {
+              unset($context->reactions['block']['blocks'][$key]);
+            }
+          }
+          context_save($context);
+
+          drupal_set_message(t('Block removed'));
+        }
+      }
+      break;
+  }
+
+  drupal_goto($_GET['destination']);
+}
+
+function _ombublocks_delete_submit($form, &$form_state) {
+  $context = context_load($form['#context']);
+  if ($context) {
+    foreach($context->reactions['block']['blocks'] as $key => $value) {
+      if ($value['module'] == 'bean' && $value['delta'] == $form['#bean']->delta) {
+        unset($context->reactions['block']['blocks'][$key]);
+      }
+    }
+    context_save($context);
+  }
+}
+
+/**
+ * Stub function, handled in js.
+ */
+function _ombublocks_move($bean) {}
+
+/**
+ * Check to see if the current user has access to edit the blocks on the current
+ * page by checking to see if the user access to edit the current page.
+ */
+function _ombublocks_has_block_access() {
+  if ($node = menu_get_object()) {
+    return node_access('update', $node);
+  }
+
+  if ($term = menu_get_object('taxonomy_term', 2)) {
+    if (module_exists('workbench_access_taxonomy')) {
+      return workbench_access_taxonomy_access($term);
+    }
+  }
+
+  // Handle views associated with taxonomy terms
+  if (arg(0) == 'taxonomy' && arg(1) == 'term') {
+    $tid = arg(2);
+    $term = taxonomy_term_load($tid);
+    if (module_exists('workbench_access_taxonomy')) {
+      return workbench_access_taxonomy_access($term);
+    }
+  }
+}
+
+/**
+ * Save the weights of blocks to the current page's context.
+ */
+function _ombublocks_save_weights() {
+  $params = json_decode(file_get_contents('php://input'));
+  if ($params->active_context) {
+    $context = context_load($params->active_context);
+    foreach ($context->reactions['block']['blocks'] as $key => &$value) {
+      if ($value['region'] !== str_replace('-', '_', $params->region)) continue;
+      $i = array_search(str_replace('_', '-', $key), $params->blocks);
+      if ($i !== FALSE) {
+        $value['weight'] = $i;
+      }
+    }
+    return drupal_json_output(context_save($context));
+  }
+}
+
+/**
+ * Get the available regions for adding new blocks to.
+ *
+ * @todo: this should be hookable.
+ */
+function _ombublocks_get_regions() {
+  return array(
+    'masthead' => 'Masthead',
+    'content_top' => 'Sub Masthead',
+    'above_content' => 'Above Content',
+    'content' => 'Content',
+    'content_bottom' => 'Content Bottom (below both sidebars)',
+    'sidebar_second' => 'Right Sidebar',
+  );
+}
+
+/**
+ * Initialize the javascript for the current page, if there are active
+ * ombublocks.
+ */
+function _ombublocks_js_init() {
+  static $initialized;
+
+  if (!$initialized) {
+    drupal_add_js(drupal_get_path('module', 'ombublocks') . '/ombublocks.js');
+
+    $context = _ombublocks_get_active_context();
+    if ($context) {
+      drupal_add_js(array('ombublocks' => array('active_context' => $context->name)), 'setting');
+    }
+
+    $initialized = TRUE;
+  }
 }

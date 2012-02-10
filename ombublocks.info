@@ -1,7 +1,7 @@
 ; $Id$
 name = "ombublocks"
-description = "Block management that doesn't suck"
-package = "OMBU"
+description = "Provides draggable block functionality"
+package = 'OMBU'
 core = 7.x
-php = 5.3
-scripts[] = js/ombublocks.js
+php = 5.1
+stylesheets[all][] = css/ombublocks.css
