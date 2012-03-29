@@ -158,7 +158,7 @@ function ombublocks_preprocess_block(&$variables) {
 
   // Hide contextual links for all blocks except ombublocks.
   if (!ombublocks_is_ombublock($variables['block']->module, $variables['block']->delta) || !_ombublocks_has_block_access()) {
-    $variables['title_suffix']['contextual_links']['#access'] = FALSE;
+    /* $variables['title_suffix']['contextual_links']['#access'] = FALSE; */
   }
 }
 
@@ -167,10 +167,7 @@ function ombublocks_preprocess_block(&$variables) {
  */
 function ombublocks_ombublocks_info() {
   // naming convention is MODULE__DELTA
-  $blocks = array(
-    'stand_newsletter__newsletter'  => t('Newsletter Block'),
-  );
-  return $blocks;
+  $blocks = array();
 
   // All beans are ombublocks for now, so don't include all beans in block info.
   $beans = bean_get_all_beans();
@@ -284,7 +281,7 @@ function ombublock_add_form($form, &$form_state, $context_name = '') {
     $form['block_type'] = array(
       '#type' => 'select',
       '#title' => t('Block Type'),
-      '#options' => array('' => 'Select One') + ombublocks_get_static_types() + ombublocks_get_types(),
+      '#options' => array('' => 'Select One') + ombublocks_get_types(),
       '#description' => t('Choose the type of block you\'d like to add'),
       '#required' => TRUE,
     );
@@ -326,31 +323,9 @@ function ombublock_add_form($form, &$form_state, $context_name = '') {
 }
 
 function ombublock_add_form_next($form, &$form_state) {
-  if (!strstr($form_state['values']['block_type'], '__')) {
     $form_state['next_step'] = TRUE;
     $form_state['type_values'] = $form_state['values'];
     $form_state['rebuild'] = TRUE;
-  }
-  else {
-    // Save static block to selected region in the active page context.
-    if ($form_state['values']['context']) {
-      $context = context_load($form_state['values']['context']);
-    }
-    else {
-      $context = _ombublocks_create_path_context($form_state['values']['destination']);
-    }
-
-    list($module, $delta) = explode('__', $form_state['values']['block_type']);
-    $context->reactions['block']['blocks'][$module . '-' . $delta] = array(
-      'module' => $module,
-      'delta' => $delta,
-      'region' => $form_state['values']['region'],
-      'weight' => 0,
-    );
-    context_save($context);
-
-    drupal_set_message(t('Block %title added', array('%title' => $form['block_type']['#options'][$form_state['values']['block_type']])));
-  }
 }
 
 function ombublock_add_form_add_validate($form, &$form_state) {
@@ -462,18 +437,6 @@ function ombublocks_get_types() {
   }
   drupal_alter('ombublocks_types', $types);
   return $types;
-}
-
-/**
- * Returns a list of static block types.
- *
- * @todo: make this configurable and hookable.
- */
-function ombublocks_get_static_types() {
-  $blocks = array(
-    'stand_newsletter__newsletter'  => t('Newsletter Block'),
-  );
-  return $blocks;
 }
 
 /**
@@ -755,14 +718,7 @@ function _ombublocks_save_weights() {
  * @todo: this should be hookable.
  */
 function _ombublocks_get_regions() {
-  return array(
-    'masthead' => 'Masthead',
-    'content_top' => 'Sub Masthead',
-    'above_content' => 'Above Content',
-    'content' => 'Content',
-    'content_bottom' => 'Content Bottom (below both sidebars)',
-    'sidebar_second' => 'Right Sidebar',
-  );
+  return system_region_list(variable_get('theme_default', null));
 }
 
 /**
