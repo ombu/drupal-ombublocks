@@ -445,14 +445,15 @@ function ombublocks_set_width($form, &$form_state, $module, $delta) {
   }
 
   $form['help'] = array(
-    '#markup' => t('Select the width of this block.'),
+    '#markup' => t('<p>Select the width of this block.</p>'),
   );
 
+  $width = ombublocks_block_get_width($module, $delta);
   $form['width'] = array(
     '#type' => 'select',
-    '#name' => t('Width'),
+    '#title' => t('Width'),
     '#options' => $options,
-    '#default_value' => $steps / 2,
+    '#default_value' => $width ? $width : $steps / 2,
   );
 
   $form['actions'] = array(
@@ -472,7 +473,7 @@ function ombublocks_set_width($form, &$form_state, $module, $delta) {
  * Submit handler for saving block width.
  */
 function ombublocks_set_width_submit($form, &$form_state) {
-  ombublocks_block_set_width($form_state['values']['module'], $form_state['values']['theme'], $form_state['values']['width']);
+  ombublocks_block_set_width($form_state['values']['module'], $form_state['values']['delta'], $form_state['values']['width']);
   drupal_set_message('Block width saved');
 }
 
