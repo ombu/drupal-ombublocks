@@ -1,0 +1,40 @@
+<?php
+
+/**
+ * @file
+ * Install functions for ombublocks.module.
+ */
+
+/**
+ * Implementation of hook_schema()
+ */
+function ombublocks_schema() {
+  $schema['block_width'] = array(
+    'description' => 'Stores widths of ombublocks',
+    'fields' => array(
+      'bid' => array(
+        'description' => 'The {block}.bid to store the width for.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'width' => array(
+        'description' => 'The width of block.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'foreign keys' => array(
+      'bid' => array(
+        'table' => 'block',
+        'columns' => array('bid' => 'bid'),
+      ),
+    ),
+    'unique keys' => array(
+      'bid' => array('bid'),
+    ),
+  );
+  return $schema;
+}
+

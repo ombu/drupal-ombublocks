@@ -43,6 +43,17 @@ function ombublocks_menu() {
     'weight' => -9,
   );
 
+  $items['admin/structure/block/manage/%/%/set_width'] = array(
+    'title' => 'Set Width',
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_INLINE,
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ombublocks_set_width', 4, 5),
+    'access callback' => 'ombublocks_is_ombublock',
+    'access arguments' => array(4, 5),
+    'weight' => -9,
+  );
+
   $items['admin/ombublocks/add'] = array(
     'title' => 'Add Block',
     'page callback' => 'drupal_get_form',
@@ -116,7 +127,6 @@ function ombublocks_menu_local_tasks_alter(&$data, $router_item, $root_path) {
 
 }
 
-
 /**
  * Implements hook_module_implements_alter().
  */
@@ -154,6 +164,11 @@ function ombublocks_preprocess_block(&$variables) {
   if(user_access('arrange ombublocks', $user) && _ombublocks_has_block_access()) {
     _ombublocks_js_init();
     //$variables['classes_array'][] = 'draggable';
+  }
+
+  // Add weight to block.
+  if (ombublocks_is_ombublock($variables['block']->module, $variables['block']->delta)) {
+    $variables['block']->width = ombublocks_block_get_width($variables['block']->module, $variables['block']->delta);
   }
 
   // Hide contextual links for all blocks except ombublocks.
@@ -409,6 +424,59 @@ function ombublock_add_form_add_submit($form, &$form_state) {
 }
 
 /**
+ * Form for setting the width on a block.
+ */
+function ombublocks_set_width($form, &$form_state, $module, $delta) {
+  $form['module'] = array(
+    '#type' => 'value',
+    '#value' => $module,
+  );
+  $form['delta'] = array(
+    '#type' => 'value',
+    '#value' => $delta,
+  );
+
+  // The number of unique steps that are selectable for width.
+  $steps = 12;
+
+  $options = array();
+  for ($i = 1; $i <= $steps; $i++) {
+    $options[$i] = number_format($i / $steps * 100, 0) . '%';
+  }
+
+  $form['help'] = array(
+    '#markup' => t('Select the width of this block.'),
+  );
+
+  $form['width'] = array(
+    '#type' => 'select',
+    '#name' => t('Width'),
+    '#options' => $options,
+    '#default_value' => $steps / 2,
+  );
+
+  $form['actions'] = array(
+    '#type' => 'actions',
+    'submit' => array(
+      '#type' => 'submit',
+      '#value' => t('Save'),
+      '#weight' => 5,
+      '#submit' => array('ombublocks_set_width_submit'),
+    ),
+  );
+
+  return $form;
+}
+
+/**
+ * Submit handler for saving block width.
+ */
+function ombublocks_set_width_submit($form, &$form_state) {
+  ombublocks_block_set_width($form_state['values']['module'], $form_state['values']['theme'], $form_state['values']['width']);
+  drupal_set_message('Block width saved');
+}
+
+/**
  * Public API functions
  */
 /**
@@ -483,6 +551,53 @@ function ombublocks_is_ombublock($module, $delta) {
   }
   $slug = $module . '__' . $delta;
   return array_key_exists($slug, ombublocks_get());
+}
+
+/**
+ * Inserts or updates the block width.
+ *
+ * @param string $module
+ * @param string $delta
+ * @param int $width
+ */
+function ombublocks_block_set_width($module, $delta, $width) {
+  $bid = ombublocks_block_get_bid($module, $delta);
+  $check = db_query("SELECT bid FROM {block_width} WHERE bid = :bid", array(':bid' => $bid))->fetchField();
+
+  $values = array(
+    'bid' => $bid,
+    'width' => $width,
+  );
+  if ($check) {
+    drupal_write_record('block_width', $values, 'bid');
+  }
+  else {
+    drupal_write_record('block_width', $values);
+  }
+}
+
+/**
+ * Gets the width for a block.
+ *
+ * @param string $module
+ * @param string $delta
+ *
+ * @return int $width
+ */
+function ombublocks_block_get_width($module, $delta) {
+  $bid = ombublocks_block_get_bid($module, $delta);
+  return db_query("SELECT width FROM {block_width} WHERE bid = :bid", array(':bid' => $bid))->fetchField();
+}
+
+/**
+ * Gets the bid of a block based on module, delta and theme.
+ */
+function ombublocks_block_get_bid($module, $delta, $theme = NULL) {
+  return db_query("SELECT bid FROM {block} WHERE module = :module AND delta = :delta AND theme = :theme", array(
+    ':module' => $module,
+    ':delta' => $delta,
+    ':theme' => $theme ? $theme : variable_get('theme_default', ''),
+  ))->fetchField();
 }
 
 /**
