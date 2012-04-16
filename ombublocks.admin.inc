@@ -53,6 +53,15 @@ function ombublock_add_form($form, &$form_state, $context_name = '') {
     $form['bean_form']['label']['#access'] = FALSE;
     $form['bean_form']['label']['#default_value'] = 'ombucleanup-tempkey';
 
+    // Add in width form element for beans.
+    $form['width'] = array(
+      '#type' => 'select',
+      '#title' => t('Width'),
+      '#options' => _ombublocks_width_step_options(),
+      '#default_value' => OMBUBLOCKS_WIDTH_STEPS / 2,
+      '#description' => t('Select the width of this block.'),
+    );
+
     $form['save'] = array(
       '#type' => 'submit',
       '#value' => t('Add'),
@@ -127,6 +136,9 @@ function ombublock_add_form_add_submit($form, &$form_state) {
   field_attach_submit('bean', $bean, $form, $form_state);
   $bean->save();
 
+  // Save the weight for this bean.
+  ombublocks_block_set_width('bean', $bean->delta, $form_state['values']['width']);
+
   $watchdog_args = array('@type' => $bean->type, '%title' => $bean->label);
   $t_args = array('@type' => $bean->typeName(), '%title' => $bean->label);
 
@@ -162,14 +174,6 @@ function ombublocks_set_width($form, &$form_state, $module, $delta) {
     '#value' => $delta,
   );
 
-  // The number of unique steps that are selectable for width.
-  $steps = OMBUBLOCKS_WIDTH_STEPS;
-
-  $options = array();
-  for ($i = 1; $i <= $steps; $i++) {
-    $options[$i] = number_format($i / $steps * 100, 0) . '%';
-  }
-
   $form['help'] = array(
     '#markup' => t('<p>Select the width of this block.</p>'),
   );
@@ -178,8 +182,8 @@ function ombublocks_set_width($form, &$form_state, $module, $delta) {
   $form['width'] = array(
     '#type' => 'select',
     '#title' => t('Width'),
-    '#options' => $options,
-    '#default_value' => $width ? $width : $steps / 2,
+    '#options' => _ombublocks_width_step_options(),
+    '#default_value' => $width ? $width : OMBUBLOCKS_WIDTH_STEPS / 2,
   );
 
   $form['actions'] = array(

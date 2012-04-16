@@ -286,6 +286,42 @@ function ombublocks_form_bean_delete_confirm_alter(&$form, $form_state) {
 }
 
 /**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function ombublocks_form_bean_form_alter(&$form, $form_state, $form_id) {
+  // Add in width selector to bean forms.  This only covers edit bean forms,
+  // since adding a new bean form is coming directly through ombublock_add_form().
+  $form['width'] = array(
+    '#type' => 'select',
+    '#title' => t('Width'),
+    '#options' => _ombublocks_width_step_options(),
+    '#default_value' => !empty($form['bean']['#value']->width) ? $form['bean']['#value']->width : OMBUBLOCKS_WIDTH_STEPS / 2,
+    '#description' => t('Select the width of this block.'),
+  );
+  $form['#submit'][] = 'ombublocks_form_bean_form_save_weight';
+}
+
+/**
+ * Save weight for bean.
+ */
+function ombublocks_form_bean_form_save_weight($form, $form_state) {
+  $bean = $form_state['bean'];
+  ombublocks_block_set_width('bean', $bean->delta, $form_state['values']['width']);
+}
+
+/**
+ * Implements hook_entity_load().
+ */
+function ombublocks_entity_load($entities, $type) {
+  // Save the block weights for beans.
+  if ($type == 'bean') {
+    foreach ($entities as $entity) {
+      $entity->width = ombublocks_block_get_width('bean', $entity->delta);
+    }
+  }
+}
+
+/**
  * Public API functions
  */
 /**
@@ -356,17 +392,23 @@ function ombublocks_is_ombublock($module, $delta) {
  */
 function ombublocks_block_set_width($module, $delta, $width) {
   $bid = ombublocks_block_get_bid($module, $delta);
-  $check = db_query("SELECT bid FROM {block_width} WHERE bid = :bid", array(':bid' => $bid))->fetchField();
+  if ($bid) {
+    $check = db_query("SELECT bid FROM {block_width} WHERE bid = :bid", array(':bid' => $bid))->fetchField();
 
-  $values = array(
-    'bid' => $bid,
-    'width' => $width,
-  );
-  if ($check) {
-    drupal_write_record('block_width', $values, 'bid');
+    $values = array(
+      'bid' => $bid,
+      'width' => $width,
+    );
+    if ($check) {
+      drupal_write_record('block_width', $values, 'bid');
+    }
+    else {
+      drupal_write_record('block_width', $values);
+    }
   }
   else {
-    drupal_write_record('block_width', $values);
+    // Something went wrong with finding the bid.
+    // @todo: should have proper error handling here.
   }
 }
 
@@ -598,4 +640,17 @@ function _ombublocks_js_init() {
 
     $initialized = TRUE;
   }
+}
+
+/**
+ * Returns options for selecting width steps.
+ */
+function _ombublocks_width_step_options() {
+  $steps = OMBUBLOCKS_WIDTH_STEPS;
+
+  $options = array();
+  for ($i = 1; $i <= $steps; $i++) {
+    $options[$i] = number_format($i / $steps * 100, 0) . '%';
+  }
+  return $options;
 }
