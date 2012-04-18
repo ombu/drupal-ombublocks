@@ -97,6 +97,7 @@ function ombublocks_menu_alter(&$items) {
   $items['admin/structure/block/manage/%/%/delete']['access callback'] = 'ombublocks_is_ombublock';
   $items['admin/structure/block/manage/%/%/delete']['access arguments'] = array(4, 5);
   $items['admin/structure/block/manage/%/%/delete']['file'] = 'ombublocks.admin.inc';
+  $items['admin/structure/block/manage/%/%/delete']['module'] = 'ombublocks';
 }
 
 /**
