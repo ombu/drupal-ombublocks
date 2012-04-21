@@ -272,7 +272,11 @@ EOD;
  */
 function ombublocks_node_insert($node) {
   // Create a new context for this node.
-  _ombublocks_create_path_context('node/' . $node->nid, isset($node->ombublocks_layout) ? $node->ombublocks_layout : NULL);
+  _ombublocks_create_path_context(
+    'node/' . $node->nid,
+    isset($node->ombublocks_layout) ? $node->ombublocks_layout : NULL,
+    isset($node->ombublocks) ? $node->ombublocks : NULL
+  );
 }
 
 /**
@@ -451,12 +455,14 @@ function ombublocks_block_get_bid($module, $delta, $theme = NULL) {
  *     - OMBUBLOCKS_INHERIT_NONE => New blank layout
  *     - OMBUBLOCKS_INHERIT_DEFAULT => Default layout
  *     - OMBUBLOCKS_INHERIT_PARENT => Inherited from menu parent
+ * @param array $default_blocks
+ *   Array of blocks to add to the node context.  Only applies if
+ *   $inheritance_type is OMBUBLOCKS_INHERIT_NONE.
  *
  * @return $context
  *   The fully created context object.
- *
  */
-function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_INHERIT_NONE) {
+function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_INHERIT_NONE, $default_blocks = array()) {
   // Check to see if context already exists.
   if ($context = context_load('ombublocks-' . _ombublocks_normalize_path($path))) {
     return $context;
@@ -467,6 +473,10 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
     case OMBUBLOCKS_INHERIT_NONE:
       $context = new stdClass;
       $context->tag = 'ombublocks';
+
+      // For now assume that $default_blocks is well structured.  We can add in
+      // checking in the future.
+      $context->reactions['block']['blocks'] = $default_blocks;
       break;
 
     case OMBUBLOCKS_INHERIT_DEFAULT:
@@ -514,7 +524,7 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
   );
 
   // If context has been inherited, then duplicate bean blocks.
-  if (isset($context->reactions['block'])) {
+  if ($inheritance_type != OMBUBLOCKS_INHERIT_NONE && isset($context->reactions['block'])) {
     $blocks = $context->reactions['block']['blocks'];
     $context->reactions['block']['blocks'] = array();
     foreach ($blocks as $id => $block) {
