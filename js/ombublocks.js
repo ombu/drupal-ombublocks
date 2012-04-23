@@ -27,6 +27,7 @@
 
   Ombublock.prototype.selector = {
     block: '[data-type="block"]',
+    ombublock: '.ombublock',
     region: '[data-type="region"]',
     row: '.row-fluid'
   };
@@ -84,7 +85,7 @@
 
   Ombublock.prototype.moveLeft = function(e) {
     this.removeRows(this.region);
-    var prev = this.domNode.prev(this.selector.block);
+    var prev = this.domNode.prev(this.selector.ombublock);
     if (prev.length === 0) {
       this.addRows(this.region);
       alert('This is already the first block in this region.')
@@ -98,7 +99,7 @@
 
   Ombublock.prototype.moveRight = function(e) {
     this.removeRows(this.region);
-    var next = this.domNode.next(this.selector.block);
+    var next = this.domNode.next(this.selector.ombublock);
     if (next.length === 0) {
       this.addRows(this.region);
       alert('This is already the first block in this region.')

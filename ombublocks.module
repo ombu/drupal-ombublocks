@@ -171,7 +171,6 @@ function ombublocks_permission() {
  */
 function ombublocks_preprocess_block(&$variables) {
   global $user;
-  $variables['classes_array'][] = 'ombublock';
   if(user_access('arrange ombublocks', $user) && _ombublocks_has_block_access()) {
     _ombublocks_js_init();
     //$variables['classes_array'][] = 'draggable';
@@ -179,6 +178,7 @@ function ombublocks_preprocess_block(&$variables) {
 
   // Add weight to block.
   if (ombublocks_is_ombublock($variables['block']->module, $variables['block']->delta)) {
+    $variables['classes_array'][] = 'ombublock';
     $variables['block']->width = ombublocks_block_get_width($variables['block']->module, $variables['block']->delta);
   }
 
