@@ -1,13 +1,13 @@
 (function ($) {
   Drupal.behaviors.ombublocks = {
     attach: function(context,settings) {
-      $('.contextual-links', context).click(function (e) {
-        // @todo would be nicer to do this via class/url
-        if(e.target.innerHTML !== 'Move' ) {
-          return;
-        }
+      $('.contextual-links .block-arrange a', context).click(function (e) {
         e.preventDefault();
         e.stopPropagation();
+        $(e.target).blur();
+        if ($(e.target).closest(Ombublock.prototype.selector.block).hasClass('dragging')) {
+          return;
+        }
         block = new Ombublock(e.target);
         block.setDraggable();
       });
@@ -21,7 +21,14 @@
 
   Ombublock = function(domNode) {
     $d = $(domNode);
-    this.domNode = $d.hasClass('block') ? $d : $d.closest('.block');
+    this.domNode = $d.attr('data-type') === 'block' ? $d : $d.closest(this.selector.block);
+    this.region = $(this.domNode).closest(this.selector.region);
+  };
+
+  Ombublock.prototype.selector = {
+    block: '[data-type="block"]',
+    region: '[data-type="region"]',
+    row: '.row-fluid'
   };
 
   Ombublock.prototype.setDraggable = function() {
@@ -36,7 +43,7 @@
     $('body').removeClass('dragging');
     this.removeMoveOverlay();
     return this;
-  }
+  };
 
   /**
    * TODO Use jQuery template
@@ -66,7 +73,7 @@
   Ombublock.prototype.removeMoveOverlay = function() {
     $('.drag-overlay', this.domNode).remove();
     return this;
-  }
+  };
 
   /**
    * Update left/right buttons
@@ -76,26 +83,32 @@
   }
 
   Ombublock.prototype.moveLeft = function(e) {
-    this.moved = true;
-    var prev = this.domNode.prev();
-    if(!prev.hasClass('block')) {
+    this.removeRows(this.region);
+    var prev = this.domNode.prev(this.selector.block);
+    if (prev.length === 0) {
+      this.addRows(this.region);
       alert('This is already the first block in this region.')
       return false;
     }
+    this.moved = true;
     this.domNode.insertBefore(prev);
+    this.addRows(this.region);
     return false;
-  }
+  };
 
   Ombublock.prototype.moveRight = function(e) {
-    this.moved = true;
-    var next = this.domNode.next();
-    if(!next.hasClass('block')) {
-      alert('This is already the last block in this region.')
+    this.removeRows(this.region);
+    var next = this.domNode.next(this.selector.block);
+    if (next.length === 0) {
+      this.addRows(this.region);
+      alert('This is already the first block in this region.')
       return false;
     }
+    this.moved = true;
     this.domNode.insertAfter(next);
+    this.addRows(this.region);
     return false;
-  }
+  };
 
   Ombublock.prototype.moveCancel = function(e) {
     // if there hasen't yet been any moving action, do a soft reset
@@ -107,16 +120,15 @@
     else {
       window.location.reload();
     }
-  }
+  };
 
   /**
    * Static methods
    */
   Ombublock.prototype.saveState = function() {
     var region_node, region, ids;
-    region_node = this.domNode.parent('.region');
-    region = region_node.attr('class').match(/region-([^ ]+)/)[1];
-    ids = $.makeArray($('.block', region_node).map(function() {
+    region = this.region.attr('data-name');
+    ids = $.makeArray($(this.selector.block, this.region).map(function() {
       return this.id.match(/block-(.+)/)[1];
     }));
     $.ajax({
@@ -128,16 +140,55 @@
       contentType: 'application/json',
       dataType: 'json'
     });
-  },
+  };
 
   Ombublock.prototype.saveHandleSuccess = function() {
     this.unsetDraggable();
-  },
+  };
 
   Ombublock.prototype.saveHandleError = function() {
     alert('Sorry, there was a problem saving the updated layout. Please try again after the page reloads.');
     window.location.reload();
-  }
+  };
+
+  Ombublock.prototype.removeRows = function(region) {
+    region.find(this.selector.block).unwrap();
+    return region;
+  };
+
+  Ombublock.prototype.addRows = function(region) {
+    var blocks = region.find(this.selector.block).detach();
+    var l = blocks.length;
+    var curr_row = $('<div class="row-fluid"></div>');
+    var width;
+    var col_count = 0;
+    var max_cols_per_row = 12;
+
+    for (i = 0; i < l; i++) {
+      width = Ombublock.getWidth(blocks[i]);
+
+      if ((col_count + width) <= max_cols_per_row) {
+        col_count += width;
+      }
+      else {
+        region.append(curr_row);
+        curr_row = $('<div class="row-fluid"></div>');
+        col_count = width;
+      }
+
+      curr_row.append(blocks[i]);
+    }
+
+    region.append(curr_row);
+    return region;
+  };
+
+  Ombublock.getWidth = function(blockDomNode) {
+    var classString = $(blockDomNode).attr('class');
+    var matches = classString.match(/span(\d+)/);
+    var width = matches.pop();
+    return parseInt(width, 10);
+  };
 
 }(jQuery));
 
