@@ -50,7 +50,7 @@ function ombublocks_menu() {
   );
 
   $items['admin/structure/block/manage/%/%/set_width'] = array(
-    'title' => 'Set Width',
+    'title' => 'Width',
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_INLINE,
     'page callback' => 'drupal_get_form',
