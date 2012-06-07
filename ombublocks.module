@@ -98,6 +98,9 @@ function ombublocks_menu_alter(&$items) {
   $items['admin/structure/block/manage/%/%/delete']['access arguments'] = array(4, 5);
   $items['admin/structure/block/manage/%/%/delete']['file'] = 'ombublocks.admin.inc';
   $items['admin/structure/block/manage/%/%/delete']['module'] = 'ombublocks';
+
+  // Remove block configure context.
+  // unset($items['admin/structure/block/manage/%/%/configure']['context']);
 }
 
 /**
@@ -204,6 +207,16 @@ function ombublocks_ombublocks_info() {
     }
   }
   return $blocks;
+}
+
+/**
+ * Implements hook_contextual_links_view_alter().
+ */
+function ombublocks_contextual_links_view_alter(&$element, $items) {
+  // Remove configure block link for all blocks.
+  if (isset($element['#element']['#block'])) {
+    unset($element['#links']['block-configure']);
+  }
 }
 
 /**
