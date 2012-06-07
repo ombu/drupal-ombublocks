@@ -58,7 +58,7 @@ function ombublock_add_form($form, &$form_state, $context_name = '') {
       '#type' => 'select',
       '#title' => t('Width'),
       '#options' => _ombublocks_width_step_options(),
-      '#default_value' => OMBUBLOCKS_WIDTH_STEPS / 2,
+      '#default_value' => OMBUBLOCKS_WIDTH_STEPS,
       '#description' => t('Select the width of this block.'),
     );
 
@@ -183,7 +183,7 @@ function ombublocks_set_width($form, &$form_state, $module, $delta) {
     '#type' => 'select',
     '#title' => t('Width'),
     '#options' => _ombublocks_width_step_options(),
-    '#default_value' => $width ? $width : OMBUBLOCKS_WIDTH_STEPS / 2,
+    '#default_value' => $width ? $width : OMBUBLOCKS_WIDTH_STEPS,
   );
 
   $form['actions'] = array(

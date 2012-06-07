@@ -300,7 +300,7 @@ function ombublocks_form_bean_form_alter(&$form, $form_state, $form_id) {
     '#type' => 'select',
     '#title' => t('Width'),
     '#options' => _ombublocks_width_step_options(),
-    '#default_value' => !empty($form['bean']['#value']->width) ? $form['bean']['#value']->width : OMBUBLOCKS_WIDTH_STEPS / 2,
+    '#default_value' => !empty($form['bean']['#value']->width) ? $form['bean']['#value']->width : OMBUBLOCKS_WIDTH_STEPS,
     '#description' => t('Select the width of this block.'),
   );
   $form['#submit'][] = 'ombublocks_form_bean_form_save_weight';
