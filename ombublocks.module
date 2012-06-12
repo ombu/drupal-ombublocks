@@ -600,13 +600,20 @@ function _ombublocks_move($bean) {}
  * page by checking to see if the user access to edit the current page.
  */
 function _ombublocks_has_block_access() {
+  // Node access.
   if ($node = menu_get_object()) {
     return node_access('update', $node);
   }
 
+  // Taxonomy access.
   if ($term = menu_get_object('taxonomy_term', 2)) {
+    // Use workbench access if exists
     if (module_exists('workbench_access_taxonomy')) {
       return workbench_access_taxonomy_access($term);
+    }
+    // Otherwise default to taxonomy access.
+    else {
+      return user_access('edit terms in ' . $term->vid);
     }
   }
 
