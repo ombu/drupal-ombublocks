@@ -300,7 +300,7 @@ function ombublocks_node_insert($node) {
   _ombublocks_create_path_context(
     'node/' . $node->nid,
     isset($node->ombublocks_layout) ? $node->ombublocks_layout : NULL,
-    isset($node->ombublocks) ? $node->ombublocks : NULL
+    isset($node->ombublocks) ? $node->ombublocks : array()
   );
 }
 
@@ -404,9 +404,12 @@ function ombublocks_bean_is_ombublock($bean) {
  * Whether a block is an ombublock
  *
  * @param string $module
+ *   The module the block belongs to.
  * @param string $delta
+ *   The delta of the block
  *
  * @return bool
+ *   True if block is defined as an ombublock.
  */
 function ombublocks_is_ombublock($module, $delta) {
   // All beans are ombublocks.
@@ -421,8 +424,12 @@ function ombublocks_is_ombublock($module, $delta) {
  * Inserts or updates the block width.
  *
  * @param string $module
+ *   The module the block belongs to.
  * @param string $delta
- * @param int $width
+ *   The delta of the block
+ * @param string $context_id
+ *   The context in which to find the block width.  Will default to a `global`
+ *   context if NULL.
  */
 function ombublocks_block_set_width($module, $delta, $width, $context_id = NULL) {
   if (is_null($context_id)) {
@@ -464,9 +471,15 @@ function ombublocks_block_set_width($module, $delta, $width, $context_id = NULL)
  * Gets the width for a block.
  *
  * @param string $module
+ *   The module the block belongs to.
  * @param string $delta
+ *   The delta of the block
+ * @param string $context_id
+ *   The context in which to find the block width.  Will default to a `global`
+ *   context if NULL.
  *
- * @return int $width
+ * @return int
+ *   The width of the given block.
  */
 function ombublocks_block_get_width($module, $delta, $context_id = NULL) {
   if (is_null($context_id)) {
@@ -474,14 +487,13 @@ function ombublocks_block_get_width($module, $delta, $context_id = NULL) {
     if ($context) {
       $context_id = $context->name;
     }
-    else {
-      $context_id = 'global';
-    }
   }
 
+  // Pull in the width of the block from the given context, defaulting to the
+  // global context if present.
   $bid = ombublocks_block_get_bid($module, $delta);
-  return db_query("SELECT width FROM {block_width} WHERE context_id = :context_id AND bid = :bid", array(
-    ':context_id' => $context_id,
+  return db_query("SELECT width FROM {block_width} WHERE context_id in (:context_id) AND bid = :bid LIMIT 1", array(
+    ':context_id' => array($context_id, 'global'),
     ':bid' => $bid,
   ))->fetchField();
 }
