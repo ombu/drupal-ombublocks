@@ -135,10 +135,6 @@ function ombublock_add_form_add_submit($form, &$form_state) {
   $bean->setValues($form_state['values']);
   field_attach_submit('bean', $bean, $form, $form_state);
   $bean->save();
-
-  // Save the weight for this bean.
-  ombublocks_block_set_width('bean', $bean->delta, $form_state['values']['width']);
-
   $watchdog_args = array('@type' => $bean->type, '%title' => $bean->label);
   $t_args = array('@type' => $bean->typeName(), '%title' => $bean->label);
 
@@ -152,6 +148,10 @@ function ombublock_add_form_add_submit($form, &$form_state) {
   else {
     $context = _ombublocks_create_path_context($form_state['type_values']['destination']);
   }
+
+  // Save the weight for this bean.
+  ombublocks_block_set_width('bean', $bean->delta, $form_state['values']['width'], $context->name);
+
   $context->reactions['block']['blocks']['bean-' . $bean->delta] = array(
     'module' => 'bean',
     'delta' => $bean->delta,
@@ -165,6 +165,10 @@ function ombublock_add_form_add_submit($form, &$form_state) {
  * Form for setting the width on a block.
  */
 function ombublocks_set_width($form, &$form_state, $module, $delta) {
+  if (isset($_GET['destination'])) {
+    $form['#context'] = 'ombublocks-' . _ombublocks_normalize_path($_GET['destination']);
+  }
+
   $form['module'] = array(
     '#type' => 'value',
     '#value' => $module,
@@ -203,7 +207,7 @@ function ombublocks_set_width($form, &$form_state, $module, $delta) {
  * Submit handler for saving block width.
  */
 function ombublocks_set_width_submit($form, &$form_state) {
-  ombublocks_block_set_width($form_state['values']['module'], $form_state['values']['delta'], $form_state['values']['width']);
+  ombublocks_block_set_width($form_state['values']['module'], $form_state['values']['delta'], $form_state['values']['width'], $form['#context']);
   drupal_set_message('Block width saved');
 }
 
@@ -247,6 +251,7 @@ function ombublocks_delete($module, $delta) {
 function ombublocks_delete_submit($form, &$form_state) {
   $context = context_load($form['#context']);
   if ($context) {
+    // Delete bean from context.
     foreach($context->reactions['block']['blocks'] as $key => $value) {
       if ($value['module'] == 'bean' && $value['delta'] == $form['#bean']->delta) {
         unset($context->reactions['block']['blocks'][$key]);

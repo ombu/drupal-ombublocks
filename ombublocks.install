@@ -6,12 +6,19 @@
  */
 
 /**
- * Implementation of hook_schema()
+ * Implements hook_schema().
  */
 function ombublocks_schema() {
   $schema['block_width'] = array(
     'description' => 'Stores widths of ombublocks',
     'fields' => array(
+      'context_id' => array(
+        'description' => 'The primary identifier for a context.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
       'bid' => array(
         'description' => 'The {block}.bid to store the width for.',
         'type' => 'int',
@@ -26,15 +33,33 @@ function ombublocks_schema() {
       ),
     ),
     'foreign keys' => array(
+      'context_id' => array(
+        'table' => 'context',
+        'columns' => array('context_id' => 'name'),
+      ),
       'bid' => array(
         'table' => 'block',
         'columns' => array('bid' => 'bid'),
       ),
     ),
     'unique keys' => array(
-      'bid' => array('bid'),
+      'context_id_bid' => array('context_id', 'bid'),
     ),
   );
   return $schema;
 }
 
+/**
+ * Adds a context_id column to allow global blocks to get a per-context width.
+ */
+function ombublocks_update_7001() {
+  db_drop_unique_key('block_width', 'bid');
+  db_add_field('block_width', 'context_id', array(
+    'description' => 'The primary identifier for a context.',
+    'type' => 'varchar',
+    'length' => 255,
+    'not null' => TRUE,
+    'default' => '',
+  ));
+  db_add_unique_key('block_width', 'context_id_bid', array('context_id', 'bid'));
+}

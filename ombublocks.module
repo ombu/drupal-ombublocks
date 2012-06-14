@@ -192,11 +192,23 @@ function ombublocks_preprocess_block(&$variables) {
 }
 
 /**
+ * Implements hook_block_view_MODULE_DELTA_alter().
+ */
+function ombublocks_block_view_system_main_alter(&$build, $block) {
+  // Add contextual links to build array for system main, to allow system main
+  // block to be orderable.
+  $build['content']['#contextual_links']['block'] = array('admin/structure/block/manage', array($block->module, $block->delta));
+}
+
+/**
  * Implements hook_ombublocks_info().
  */
 function ombublocks_ombublocks_info() {
   // naming convention is MODULE__DELTA
   $blocks = array();
+
+  // Add system main as an ombublock
+  $blocks['system__main'] = 'Main page content';
 
   // All beans are ombublocks for now, so don't include all beans in block info.
   $beans = bean_get_all_beans();
@@ -307,6 +319,10 @@ function ombublocks_form_bean_delete_confirm_alter(&$form, $form_state) {
  * Implements hook_form_FORM_ID_alter().
  */
 function ombublocks_form_bean_form_alter(&$form, $form_state, $form_id) {
+  if (isset($_GET['destination'])) {
+    $form['#context'] = 'ombublocks-' . _ombublocks_normalize_path($_GET['destination']);
+  }
+
   // Add in width selector to bean forms.  This only covers edit bean forms,
   // since adding a new bean form is coming directly through ombublock_add_form().
   $form['width'] = array(
@@ -324,14 +340,14 @@ function ombublocks_form_bean_form_alter(&$form, $form_state, $form_id) {
  */
 function ombublocks_form_bean_form_save_weight($form, $form_state) {
   $bean = $form_state['bean'];
-  ombublocks_block_set_width('bean', $bean->delta, $form_state['values']['width']);
+  ombublocks_block_set_width('bean', $bean->delta, $form_state['values']['width'], $form['#context']);
 }
 
 /**
  * Implements hook_entity_load().
  */
 function ombublocks_entity_load($entities, $type) {
-  // Save the block weights for beans.
+  // Save the block width for beans.
   if ($type == 'bean') {
     foreach ($entities as $entity) {
       $entity->width = ombublocks_block_get_width('bean', $entity->delta);
@@ -408,17 +424,31 @@ function ombublocks_is_ombublock($module, $delta) {
  * @param string $delta
  * @param int $width
  */
-function ombublocks_block_set_width($module, $delta, $width) {
+function ombublocks_block_set_width($module, $delta, $width, $context_id = NULL) {
+  if (is_null($context_id)) {
+    $context = _ombublocks_get_active_context();
+    if ($context) {
+      $context_id = $context->name;
+    }
+    else {
+      $context_id = 'global';
+    }
+  }
+
   $bid = ombublocks_block_get_bid($module, $delta);
   if ($bid) {
-    $check = db_query("SELECT bid FROM {block_width} WHERE bid = :bid", array(':bid' => $bid))->fetchField();
+    $check = db_query("SELECT bid FROM {block_width} WHERE context_id = :context_id AND bid = :bid", array(
+      ':context_id' => $context_id,
+      ':bid' => $bid
+    ))->fetchField();
 
     $values = array(
+      'context_id' => $context_id,
       'bid' => $bid,
       'width' => $width,
     );
     if ($check) {
-      drupal_write_record('block_width', $values, 'bid');
+      drupal_write_record('block_width', $values, array('context_id', 'bid'));
     }
     else {
       drupal_write_record('block_width', $values);
@@ -438,9 +468,22 @@ function ombublocks_block_set_width($module, $delta, $width) {
  *
  * @return int $width
  */
-function ombublocks_block_get_width($module, $delta) {
+function ombublocks_block_get_width($module, $delta, $context_id = NULL) {
+  if (is_null($context_id)) {
+    $context = _ombublocks_get_active_context();
+    if ($context) {
+      $context_id = $context->name;
+    }
+    else {
+      $context_id = 'global';
+    }
+  }
+
   $bid = ombublocks_block_get_bid($module, $delta);
-  return db_query("SELECT width FROM {block_width} WHERE bid = :bid", array(':bid' => $bid))->fetchField();
+  return db_query("SELECT width FROM {block_width} WHERE context_id = :context_id AND bid = :bid", array(
+    ':context_id' => $context_id,
+    ':bid' => $bid,
+  ))->fetchField();
 }
 
 /**
@@ -486,6 +529,17 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
     case OMBUBLOCKS_INHERIT_NONE:
       $context = new stdClass;
       $context->tag = 'ombublocks';
+
+      // Make sure system_main is always in the default block array.  That way
+      // the main content block can be orderable within this context (ftw!).
+      if (!in_array('system-main', $default_blocks)) {
+        $default_blocks['system-main'] = array(
+          'module' => 'system',
+          'delta' => 'main',
+          'region' => 'content',
+          'weight' => '0',
+        );
+      }
 
       // For now assume that $default_blocks is well structured.  We can add in
       // checking in the future.
@@ -554,6 +608,13 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
       else {
         $context->reactions['block']['blocks'][$id] = $block;
       }
+    }
+  }
+
+  // Check if any of the blocks have widths set, and save for this context.
+  foreach ($context->reactions['block']['blocks'] as $id => $block) {
+    if (isset($block['width'])) {
+      ombublocks_block_set_width($block['module'], $block['delta'], $block['width'], $context->name);
     }
   }
 
