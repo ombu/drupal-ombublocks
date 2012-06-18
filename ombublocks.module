@@ -196,8 +196,10 @@ function ombublocks_preprocess_block(&$variables) {
  */
 function ombublocks_block_view_system_main_alter(&$build, $block) {
   // Add contextual links to build array for system main, to allow system main
-  // block to be orderable.
-  $build['content']['#contextual_links']['block'] = array('admin/structure/block/manage', array($block->module, $block->delta));
+  // block to be orderable.  Only do this for front end theme.
+  if (!path_is_admin(current_path())) {
+    $build['content']['#contextual_links']['block'] = array('admin/structure/block/manage', array($block->module, $block->delta));
+  }
 }
 
 /**
