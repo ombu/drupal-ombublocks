@@ -351,8 +351,12 @@ function ombublocks_form_bean_form_save_weight($form, $form_state) {
 function ombublocks_entity_load($entities, $type) {
   // Save the block width for beans.
   if ($type == 'bean') {
+    $context_id = NULL;
+    if (isset($_GET['destination'])) {
+      $context_id = 'ombublocks-' . _ombublocks_normalize_path($_GET['destination']);
+    }
     foreach ($entities as $entity) {
-      $entity->width = ombublocks_block_get_width('bean', $entity->delta);
+      $entity->width = ombublocks_block_get_width('bean', $entity->delta, $context_id);
     }
   }
 }
