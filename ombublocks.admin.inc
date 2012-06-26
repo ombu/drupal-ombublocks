@@ -182,12 +182,14 @@ function ombublocks_set_width($form, &$form_state, $module, $delta) {
     '#markup' => t('<p>Select the width of this block.</p>'),
   );
 
-  $width = ombublocks_block_get_width($module, $delta);
+  $width = ombublocks_block_get_width($module, $delta, $form['#context']);
+
   $form['width'] = array(
     '#type' => 'select',
     '#title' => t('Width'),
     '#options' => _ombublocks_width_step_options(),
     '#default_value' => $width ? $width : OMBUBLOCKS_WIDTH_STEPS,
+
   );
 
   $form['actions'] = array(
