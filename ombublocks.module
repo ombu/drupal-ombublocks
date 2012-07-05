@@ -230,6 +230,11 @@ function ombublocks_contextual_links_view_alter(&$element, $items) {
   // Remove configure block link for all blocks.
   if (isset($element['#element']['#block'])) {
     unset($element['#links']['block-configure']);
+
+    // Remove the delete link for system main block.
+    if ($element['#element']['#block']->module == 'system' && $element['#element']['#block']->delta == 'main') {
+      unset($element['#links']['block-delete']);
+    }
   }
 }
 
@@ -357,6 +362,35 @@ function ombublocks_entity_load($entities, $type) {
     }
     foreach ($entities as $entity) {
       $entity->width = ombublocks_block_get_width('bean', $entity->delta, $context_id);
+    }
+  }
+}
+
+
+/**
+ * Implements hook_bean_access().
+ */
+function ombublocks_bean_access($bean, $op, $account) {
+  // Tie ombublock based beans visibility to menu access.
+  if ($op == 'view' && ($context = _ombublocks_get_active_context()) && isset($context->reactions['block']['blocks'])) {
+    if (array_key_exists('bean-' . $bean->delta, $context->reactions['block']['blocks'])) {
+      $item = menu_get_item();
+      return $item['access'];
+    }
+  }
+}
+
+/**
+ * Implements hook_block_view_alter().
+ */
+function ombublocks_block_view_alter(&$data, $block) {
+  // Tie ombublock based block visibility to menu access.
+  if (($context = _ombublocks_get_active_context()) && isset($context->reactions['block']['blocks'])) {
+    if (array_key_exists($block->module . '-' . $block->delta, $context->reactions['block']['blocks'])) {
+      $item = menu_get_item();
+      if (!$item['access']) {
+        $data['content'] = '';
+      }
     }
   }
 }
