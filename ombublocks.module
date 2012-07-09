@@ -1,6 +1,7 @@
 <?php
 /**
- * @file Provides draggable blocks
+ * @file
+ * Provides draggable blocks
  *
  * 1) Provides hook to define reusable block types
  *    - User can create "instaces" instances of these blocks and assign to
@@ -132,8 +133,8 @@ function ombublocks_menu_local_tasks_alter(&$data, $router_item, $root_path) {
     );
     $data['tabs'][0]['count']++;
 
-    // Make sure the Add Block link shows up even for pages that don't have local
-    // tasks
+    // Make sure the Add Block link shows up even for pages that don't have
+    // local tasks.
     if ($data['tabs'][0]['count'] == 1) {
       $data['tabs'][0]['count']++;
     }
@@ -174,9 +175,8 @@ function ombublocks_permission() {
  */
 function ombublocks_preprocess_block(&$variables) {
   global $user;
-  if(user_access('arrange ombublocks', $user) && _ombublocks_has_block_access()) {
+  if (user_access('arrange ombublocks', $user) && _ombublocks_has_block_access()) {
     _ombublocks_js_init();
-    //$variables['classes_array'][] = 'draggable';
   }
 
   // Add weight to block.
@@ -198,7 +198,12 @@ function ombublocks_block_view_system_main_alter(&$build, $block) {
   // Add contextual links to build array for system main, to allow system main
   // block to be orderable.  Only do this for front end theme.
   if (!path_is_admin(current_path())) {
-    $build['content']['#contextual_links']['block'] = array('admin/structure/block/manage', array($block->module, $block->delta));
+    $build['content']['#contextual_links']['block'] = array(
+      'admin/structure/block/manage', array(
+        $block->module,
+        $block->delta,
+      ),
+    );
   }
 }
 
@@ -206,10 +211,10 @@ function ombublocks_block_view_system_main_alter(&$build, $block) {
  * Implements hook_ombublocks_info().
  */
 function ombublocks_ombublocks_info() {
-  // naming convention is MODULE__DELTA
+  // Naming convention is MODULE__DELTA.
   $blocks = array();
 
-  // Add system main as an ombublock
+  // Add system main as an ombublock.
   $blocks['system__main'] = 'Main page content';
 
   // All beans are ombublocks for now, so don't include all beans in block info.
@@ -331,7 +336,8 @@ function ombublocks_form_bean_form_alter(&$form, $form_state, $form_id) {
   }
 
   // Add in width selector to bean forms.  This only covers edit bean forms,
-  // since adding a new bean form is coming directly through ombublock_add_form().
+  // since adding a new bean form is coming directly through
+  // ombublock_add_form().
   $form['width'] = array(
     '#type' => 'select',
     '#title' => t('Width'),
@@ -398,9 +404,12 @@ function ombublocks_block_view_alter(&$data, $block) {
 /**
  * Public API functions
  */
+
 /**
- * Returns an array of ombublocks defined by hook_ombublocks_info
+ * Returns an array of ombublocks defined by hook_ombublocks_info().
+ *
  * @return array
+ *   Array of blocks available for ombublocks in the form of MODULE__DELTA.
  */
 function ombublocks_get() {
   $ombublocks = &drupal_static(__FUNCTION__, array());
@@ -419,7 +428,7 @@ function ombublocks_get() {
 function ombublocks_get_types() {
   $_types = bean_get_types();
   $types = array();
-  foreach ($_types as $k=>$v) {
+  foreach ($_types as $k => $v) {
     $types[$k] = $v->getLabel();
   }
   drupal_alter('ombublocks_types', $types);
@@ -430,8 +439,10 @@ function ombublocks_get_types() {
  * Whether a block is an ombublock
  *
  * @param object $bean
+ *   The Bean object.
  *
  * @return bool
+ *   True if the bean is available for ombublocks.
  */
 function ombublocks_bean_is_ombublock($bean) {
   // All beans are ombublocks for now.
@@ -486,7 +497,7 @@ function ombublocks_block_set_width($module, $delta, $width, $context_id = NULL)
   if ($bid) {
     $check = db_query("SELECT bid FROM {block_width} WHERE context_id = :context_id AND bid = :bid", array(
       ':context_id' => $context_id,
-      ':bid' => $bid
+      ':bid' => $bid,
     ))->fetchField();
 
     $values = array(
@@ -586,7 +597,7 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
       }
 
     case OMBUBLOCKS_INHERIT_NONE:
-      $context = new stdClass;
+      $context = new stdClass();
       $context->tag = 'ombublocks';
 
       // Make sure system_main is always in the default block array.  That way
@@ -625,7 +636,7 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
 
       // Default to creating a new context, if parent context doesn't exist.
       if (!$context) {
-        $context = new stdClass;
+        $context = new stdClass();
         $context->tag = 'ombublocks';
       }
       break;
@@ -681,11 +692,11 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
 /**
  * Normalize a menu path for use when saving/loading ombublocks contexts.
  *
- * @param $path
+ * @param string $path
  *   A path string, in the form of path/path.
  *
  * @return string
- i   A normalized string for use in context, in the form of path-path.
+ *   A normalized string for use in context, in the form of path-path.
  */
 function _ombublocks_normalize_path($path) {
   return str_replace('/', '-', $path);
@@ -697,7 +708,7 @@ function _ombublocks_normalize_path($path) {
 function _ombublocks_get_active_context() {
   // Get the namespace for the active ombublocks context.
   $contexts = context_active_contexts();
-  foreach($contexts as $context) {
+  foreach ($contexts as $context) {
     if ($context->tag == 'ombublocks') {
       return $context;
     }
@@ -709,7 +720,8 @@ function _ombublocks_get_active_context() {
 /**
  * Stub function, handled in js.
  */
-function _ombublocks_move($bean) {}
+function _ombublocks_move($bean) {
+}
 
 /**
  * Check to see if the current user has access to edit the blocks on the current
@@ -723,7 +735,7 @@ function _ombublocks_has_block_access() {
 
   // Taxonomy access.
   if ($term = menu_get_object('taxonomy_term', 2)) {
-    // Use workbench access if exists
+    // Use workbench access if exists.
     if (module_exists('workbench_access_taxonomy')) {
       return workbench_access_taxonomy_access($term);
     }
@@ -733,7 +745,7 @@ function _ombublocks_has_block_access() {
     }
   }
 
-  // Handle views associated with taxonomy terms
+  // Handle views associated with taxonomy terms.
   if (arg(0) == 'taxonomy' && arg(1) == 'term') {
     $tid = arg(2);
     $term = taxonomy_term_load($tid);
@@ -751,7 +763,9 @@ function _ombublocks_save_weights() {
   if ($params->active_context) {
     $context = context_load($params->active_context);
     foreach ($context->reactions['block']['blocks'] as $key => &$value) {
-      if ($value['region'] !== str_replace('-', '_', $params->region)) continue;
+      if ($value['region'] !== str_replace('-', '_', $params->region)) {
+        continue;
+      }
       $i = array_search(str_replace('_', '-', $key), $params->blocks);
       if ($i !== FALSE) {
         $value['weight'] = $i;
@@ -767,7 +781,7 @@ function _ombublocks_save_weights() {
  * @todo: this should be hookable.
  */
 function _ombublocks_get_regions() {
-  return system_region_list(variable_get('theme_default', null));
+  return system_region_list(variable_get('theme_default', NULL));
 }
 
 /**
