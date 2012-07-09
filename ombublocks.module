@@ -578,6 +578,13 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
 
   // Create a new context object based on inheritance type.
   switch ($inheritance_type) {
+    case OMBUBLOCKS_INHERIT_DEFAULT:
+      $context = context_load(OMBUBLOCKS_DEFAULT_CONTEXT);
+      // Only use default context if it exists, otherwise use new context.
+      if ($context) {
+        break;
+      }
+
     case OMBUBLOCKS_INHERIT_NONE:
       $context = new stdClass;
       $context->tag = 'ombublocks';
@@ -596,10 +603,6 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
       // For now assume that $default_blocks is well structured.  We can add in
       // checking in the future.
       $context->reactions['block']['blocks'] = $default_blocks;
-      break;
-
-    case OMBUBLOCKS_INHERIT_DEFAULT:
-      $context = context_load(OMBUBLOCKS_DEFAULT_CONTEXT);
       break;
 
     case OMBUBLOCKS_INHERIT_PARENT:
