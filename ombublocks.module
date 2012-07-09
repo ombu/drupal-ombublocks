@@ -352,8 +352,10 @@ function ombublocks_form_bean_form_alter(&$form, $form_state, $form_id) {
  * Save weight for bean.
  */
 function ombublocks_form_bean_form_save_weight($form, $form_state) {
-  $bean = $form_state['bean'];
-  ombublocks_block_set_width('bean', $bean->delta, $form_state['values']['width'], $form['#context']);
+  if (isset($form['#context'])) {
+    $bean = $form_state['bean'];
+    ombublocks_block_set_width('bean', $bean->delta, $form_state['values']['width'], $form['#context']);
+  }
 }
 
 /**
@@ -753,6 +755,9 @@ function _ombublocks_has_block_access() {
       return workbench_access_taxonomy_access($term);
     }
   }
+
+  // Default to block move access.
+  return user_access('arrange ombublocks');
 }
 
 /**
