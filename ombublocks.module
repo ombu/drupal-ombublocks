@@ -240,6 +240,24 @@ function ombublocks_contextual_links_view_alter(&$element, $items) {
     if ($element['#element']['#block']->module == 'system' && $element['#element']['#block']->delta == 'main') {
       unset($element['#links']['block-delete']);
     }
+
+    // Add block type to links.
+    if ($element['#element']['#block']->module == 'bean') {
+      $types = bean_get_types();
+
+      // Get bean to determine type.  This would be so much easier if blocks had
+      // some sort of context.
+      // @todo: figure out if this link can be disabled, or at least provide
+      // some default styling in the module.
+      $bid = element_children($element['#element']['content']['bean']);
+      $label = $types[$element['#element']['content']['bean'][$bid[0]]['#entity']->type]->getLabel();
+      $element['#links'] = array(
+        'bean-type' => array(
+          'title' => $label,
+          'href' => current_path(),
+        ),
+      ) + $element['#links'];
+    }
   }
 }
 
