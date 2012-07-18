@@ -107,3 +107,13 @@
   filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=1);
   margin-top: 12px;
 }
+.contextual-links .bean-type > a {
+  /*Displays type of Bean at top of contextual menu. */
+
+  font-style: italic;
+  color: #bbb !important;
+  cursor: default;
+}
+.contextual-links .bean-type > a:hover {
+  background-color: transparent;
+}
