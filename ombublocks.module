@@ -438,6 +438,7 @@ function ombublocks_get() {
       $ombublocks = array_merge($ombublocks, module_invoke($module,
         'ombublocks_info'));
     }
+    drupal_alter('ombublocks_info', $ombublocks);
   }
   return $ombublocks;
 }
@@ -483,10 +484,6 @@ function ombublocks_bean_is_ombublock($bean) {
  *   True if block is defined as an ombublock.
  */
 function ombublocks_is_ombublock($module, $delta) {
-  // All beans are ombublocks.
-  if ($module == 'bean') {
-    return TRUE;
-  }
   $slug = $module . '__' . $delta;
   return array_key_exists($slug, ombublocks_get());
 }
