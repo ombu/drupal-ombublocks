@@ -398,7 +398,7 @@ function ombublocks_entity_load($entities, $type) {
  */
 function ombublocks_bean_access($bean, $op, $account) {
   // Tie ombublock based beans visibility to menu access.
-  if ($op == 'view' && ($context = _ombublocks_get_active_context()) && isset($context->reactions['block']['blocks'])) {
+  if ($bean && $op == 'view' && ($context = _ombublocks_get_active_context()) && isset($context->reactions['block']['blocks'])) {
     if (array_key_exists('bean-' . $bean->delta, $context->reactions['block']['blocks'])) {
       $item = menu_get_item();
       return $item['access'];
