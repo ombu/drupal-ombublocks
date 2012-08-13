@@ -401,7 +401,7 @@ function ombublocks_bean_access($bean, $op, $account) {
   if ($bean && $op == 'view' && ($context = _ombublocks_get_active_context()) && isset($context->reactions['block']['blocks'])) {
     if (array_key_exists('bean-' . $bean->delta, $context->reactions['block']['blocks'])) {
       $item = menu_get_item();
-      return $item['access'];
+      return $item['access'] && user_access('view any ' . $bean->type . ' bean');
     }
   }
 }
@@ -450,7 +450,9 @@ function ombublocks_get_types() {
   $_types = bean_get_types();
   $types = array();
   foreach ($_types as $k => $v) {
-    $types[$k] = $v->getLabel();
+    if (user_access('administer beans') || user_access("create any $k bean")) {
+      $types[$k] = $v->getLabel();
+    }
   }
   drupal_alter('ombublocks_types', $types);
   return $types;
