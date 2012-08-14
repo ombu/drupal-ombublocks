@@ -450,7 +450,7 @@ function ombublocks_get_types() {
   $_types = bean_get_types();
   $types = array();
   foreach ($_types as $k => $v) {
-    if (user_access('administer beans') || user_access("create any $k bean")) {
+    if (user_access('administer beans') || user_access("view any $k bean")) {
       $types[$k] = $v->getLabel();
     }
   }
