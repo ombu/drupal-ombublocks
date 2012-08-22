@@ -130,7 +130,7 @@
     var region_node, region, ids;
     region = this.region.attr('data-name');
     ids = $.makeArray($(this.selector.block, this.region).map(function() {
-      return this.id.match(/block-(.+)/)[1];
+      return $(this).attr('data-module') + '-' + $(this).attr('data-delta');
     }));
     $.ajax({
       type: 'POST',
