@@ -1,5 +1,5 @@
 ; $Id$
-name = "ombublocks"
+name = "OMBU Blocks"
 description = "Provides draggable block functionality"
 package = 'OMBU'
 core = 7.x
