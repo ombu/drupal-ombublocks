@@ -805,7 +805,7 @@ function _ombublocks_save_weights() {
       if ($value['region'] !== str_replace('-', '_', $params->region)) {
         continue;
       }
-      $i = array_search(str_replace('_', '-', $key), $params->blocks);
+      $i = array_search($value['module'] . '-' . $value['delta'], $params->blocks);
       if ($i !== FALSE) {
         $value['weight'] = $i;
       }
