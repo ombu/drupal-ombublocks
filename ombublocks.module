@@ -801,6 +801,18 @@ function _ombublocks_save_weights() {
   $params = json_decode(file_get_contents('php://input'));
   if ($params->active_context) {
     $context = context_load($params->active_context);
+
+    // If system main exists in incoming blocks, make sure that it exists in the
+    // context as well, otherwise weights won't save properly.
+    if (in_array('system-main', $params->blocks) && !array_key_exists('system-main', $context->reactions['block']['blocks'])) {
+      $context->reactions['block']['blocks']['system_main'] = array(
+        'module' => 'system',
+        'delta' => 'main',
+        'region' => $params->region,
+        'weight' => '0',
+      );
+    }
+
     foreach ($context->reactions['block']['blocks'] as $key => &$value) {
       if ($value['region'] !== str_replace('-', '_', $params->region)) {
         continue;
