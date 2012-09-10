@@ -403,9 +403,10 @@ function ombublocks_entity_load($entities, $type) {
 function ombublocks_bean_access($bean, $op, $account) {
   // Tie ombublock based beans visibility to menu access.
   if ($bean && $op == 'view' && ($context = _ombublocks_get_active_context()) && isset($context->reactions['block']['blocks'])) {
+
     if (array_key_exists('bean-' . $bean->delta, $context->reactions['block']['blocks'])) {
-      $item = menu_get_item();
-      return $item['access'] && user_access('view any ' . $bean->type . ' bean');
+      $item = menu_get_item(current_path());
+      return $item['access'] && current_path() != variable_get('site_403', FALSE) && user_access('view any ' . $bean->type . ' bean');
     }
   }
 }
