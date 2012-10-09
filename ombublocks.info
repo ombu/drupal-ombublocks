@@ -7,3 +7,4 @@ php = 5.1
 stylesheets[all][] = css/ombublocks.css
 dependencies[] = bean
 dependencies[] = context
+files[] = plugins/ombublocks_context_block_reaction.inc
