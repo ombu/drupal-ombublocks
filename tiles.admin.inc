@@ -2,13 +2,13 @@
 
 /**
  * @file
- * Admin callbacks for ombublocks.module.
+ * Admin callbacks for tiles.module.
  */
 
 /**
- * Form for adding ombublocks to a context
+ * Form for adding tiles to a context
  */
-function ombublock_add_form($form, &$form_state, $context_name = '') {
+function tiles_add_form($form, &$form_state, $context_name = '') {
   if (empty($form_state['next_step'])) {
     $form['context'] = array(
       '#type' => 'value',
@@ -22,7 +22,7 @@ function ombublock_add_form($form, &$form_state, $context_name = '') {
     $form['block_type'] = array(
       '#type' => 'select',
       '#title' => t('Block Type'),
-      '#options' => array('' => 'Select One') + ombublocks_get_types(),
+      '#options' => array('' => 'Select One') + tiles_get_types(),
       '#description' => t('Choose the type of block you\'d like to add'),
       '#required' => TRUE,
     );
@@ -30,7 +30,7 @@ function ombublock_add_form($form, &$form_state, $context_name = '') {
     $form['region'] = array(
       '#title' => t('Region'),
       '#type' => 'select',
-      '#options' => _ombublocks_get_regions(),
+      '#options' => _tiles_get_regions(),
       '#description' => t('Choose a region for the block. Only regions where
       you can add blocks are listed.'),
       '#default_value' => 'content',
@@ -39,7 +39,7 @@ function ombublock_add_form($form, &$form_state, $context_name = '') {
     $form['next'] = array(
       '#type' => 'submit',
       '#value' => t('Next'),
-      '#submit' => array('ombublock_add_form_next'),
+      '#submit' => array('tiles_add_form_next'),
     );
   }
   else {
@@ -57,28 +57,28 @@ function ombublock_add_form($form, &$form_state, $context_name = '') {
     $form['width'] = array(
       '#type' => 'select',
       '#title' => t('Width'),
-      '#options' => _ombublocks_width_step_options(),
-      '#default_value' => OMBUBLOCKS_WIDTH_STEPS,
+      '#options' => _tiles_width_step_options(),
+      '#default_value' => TILES_WIDTH_STEPS,
       '#description' => t('Select the width of this block.'),
     );
 
     $form['save'] = array(
       '#type' => 'submit',
       '#value' => t('Add'),
-      '#validate' => array('ombublock_add_form_add_validate'),
-      '#submit' => array('ombublock_add_form_add_submit'),
+      '#validate' => array('tiles_add_form_add_validate'),
+      '#submit' => array('tiles_add_form_add_submit'),
     );
   }
   return $form;
 }
 
-function ombublock_add_form_next($form, &$form_state) {
+function tiles_add_form_next($form, &$form_state) {
     $form_state['next_step'] = TRUE;
     $form_state['type_values'] = $form_state['values'];
     $form_state['rebuild'] = TRUE;
 }
 
-function ombublock_add_form_add_validate($form, &$form_state) {
+function tiles_add_form_add_validate($form, &$form_state) {
   if (isset($form_state['values']['bean'])) {
     $bean = $form_state['values']['bean'];
 
@@ -96,7 +96,7 @@ function ombublock_add_form_add_validate($form, &$form_state) {
   }
 }
 
-function ombublock_add_form_add_submit($form, &$form_state) {
+function tiles_add_form_add_submit($form, &$form_state) {
   module_load_include('inc', 'bean', 'includes/bean.pages');
   $bean = $form_state['bean'];
   entity_form_submit_build_entity('bean', $bean, $form, $form_state);
@@ -146,13 +146,13 @@ function ombublock_add_form_add_submit($form, &$form_state) {
     $context = context_load($form_state['type_values']['context']);
   }
   else {
-    $context = _ombublocks_create_path_context($form_state['type_values']['destination']);
+    $context = _tiles_create_path_context($form_state['type_values']['destination']);
   }
 
   // Save the weight for this bean.
-  ombublocks_block_set_width('bean', $bean->delta, $form_state['values']['width'], $context->name);
+  tiles_block_set_width('bean', $bean->delta, $form_state['values']['width'], $context->name);
 
-  $context->reactions['ombublocks']['blocks']['bean-' . $bean->delta] = array(
+  $context->reactions['tiles']['blocks']['bean-' . $bean->delta] = array(
     'module' => 'bean',
     'delta' => $bean->delta,
     'region' => $form_state['type_values']['region'],
@@ -164,9 +164,9 @@ function ombublock_add_form_add_submit($form, &$form_state) {
 /**
  * Form for setting the width on a block.
  */
-function ombublocks_set_width($form, &$form_state, $module, $delta) {
+function tiles_set_width($form, &$form_state, $module, $delta) {
   if (isset($_GET['destination'])) {
-    $form['#context'] = 'ombublocks-' . _ombublocks_normalize_path($_GET['destination']);
+    $form['#context'] = 'tiles-' . _tiles_normalize_path($_GET['destination']);
   }
 
   $form['module'] = array(
@@ -182,13 +182,13 @@ function ombublocks_set_width($form, &$form_state, $module, $delta) {
     '#markup' => t('<p>Select the width of this block.</p>'),
   );
 
-  $width = ombublocks_block_get_width($module, $delta, $form['#context']);
+  $width = tiles_block_get_width($module, $delta, $form['#context']);
 
   $form['width'] = array(
     '#type' => 'select',
     '#title' => t('Width'),
-    '#options' => _ombublocks_width_step_options(),
-    '#default_value' => $width ? $width : OMBUBLOCKS_WIDTH_STEPS,
+    '#options' => _tiles_width_step_options(),
+    '#default_value' => $width ? $width : TILES_WIDTH_STEPS,
 
   );
 
@@ -198,7 +198,7 @@ function ombublocks_set_width($form, &$form_state, $module, $delta) {
       '#type' => 'submit',
       '#value' => t('Save'),
       '#weight' => 5,
-      '#submit' => array('ombublocks_set_width_submit'),
+      '#submit' => array('tiles_set_width_submit'),
     ),
   );
 
@@ -208,18 +208,18 @@ function ombublocks_set_width($form, &$form_state, $module, $delta) {
 /**
  * Submit handler for saving block width.
  */
-function ombublocks_set_width_submit($form, &$form_state) {
-  ombublocks_block_set_width($form_state['values']['module'], $form_state['values']['delta'], $form_state['values']['width'], $form['#context']);
+function tiles_set_width_submit($form, &$form_state) {
+  tiles_block_set_width($form_state['values']['module'], $form_state['values']['delta'], $form_state['values']['width'], $form['#context']);
   drupal_set_message('Block width saved');
 }
 
 /**
- * Delete an ombublock. Renders the block_custom_block_delete form. This
+ * Delete a tile. Renders the block_custom_block_delete form. This
  * function is a placeholder in case we want to do a bit more later.
  *
  * @return form array
  */
-function ombublocks_delete($module, $delta) {
+function tiles_delete($module, $delta) {
   switch ($module) {
     // Block is a bean, delete bean since it's only on this page.
     case 'bean':
@@ -232,11 +232,11 @@ function ombublocks_delete($module, $delta) {
     // Otherwise remove block from context.
     default:
       if (isset($_GET['destination'])) {
-        $context = context_load('ombublocks-' . _ombublocks_normalize_path($_GET['destination']));
+        $context = context_load('tiles-' . _tiles_normalize_path($_GET['destination']));
         if ($context) {
-          foreach($context->reactions['ombublocks']['blocks'] as $key => $value) {
+          foreach($context->reactions['tiles']['blocks'] as $key => $value) {
             if ($value['module'] == $module && $value['delta'] == $delta) {
-              unset($context->reactions['ombublocks']['blocks'][$key]);
+              unset($context->reactions['tiles']['blocks'][$key]);
             }
           }
           context_save($context);
@@ -250,13 +250,13 @@ function ombublocks_delete($module, $delta) {
   drupal_goto($_GET['destination']);
 }
 
-function ombublocks_delete_submit($form, &$form_state) {
+function tiles_delete_submit($form, &$form_state) {
   $context = context_load($form['#context']);
   if ($context) {
     // Delete bean from context.
-    foreach($context->reactions['ombublocks']['blocks'] as $key => $value) {
+    foreach($context->reactions['tiles']['blocks'] as $key => $value) {
       if ($value['module'] == 'bean' && $value['delta'] == $form['#bean']->delta) {
-        unset($context->reactions['ombublocks']['blocks'][$key]);
+        unset($context->reactions['tiles']['blocks'][$key]);
       }
     }
     context_save($context);
@@ -264,14 +264,14 @@ function ombublocks_delete_submit($form, &$form_state) {
 }
 
 /**
- * Returns a themed link list with ombublocks
+ * Returns a themed link list with tiles
  * @param string $region
  *      Optional. Limit list to a given region
  * @return string
  */
-function ombublocks_get_link_list($region = NULL) {
+function tiles_get_link_list($region = NULL) {
   $links = array();
-  foreach (ombublocks_get($region) as $source => $title) {
+  foreach (tiles_get($region) as $source => $title) {
     $links['links'][$source]['title'] = $title;
     $links['links'][$source]['href'] = '#';
   }

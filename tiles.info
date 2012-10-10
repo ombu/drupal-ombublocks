@@ -1,0 +1,11 @@
+name = "Tiles"
+description = "Provides draggable block functionality"
+package = 'Tiles'
+core = 7.x
+php = 5.1
+
+dependencies[] = bean
+dependencies[] = context
+
+stylesheets[all][] = css/tiles.css
+files[] = plugins/tiles_context_block_reaction.inc

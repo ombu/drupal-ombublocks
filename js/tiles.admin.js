@@ -1,7 +1,7 @@
 (function ($) {
-  Drupal.behaviors.ombublocksAdmin = {
+  Drupal.behaviors.tilesAdmin = {
     attach: function (context) {
-      var $layout = $(".form-item-ombublocks-layout select");
+      var $layout = $(".form-item-tiles-layout select");
       var options = $layout.html();
       $("option[value=2]", $layout).remove();
 
@@ -15,8 +15,8 @@
         }
       });
 
-      $('fieldset.ombublocks-node-settings-form', context).drupalSetSummary(function (context) {
-        return Drupal.checkPlain($('.form-item-ombublocks-layout select :selected', context).text());
+      $('fieldset.tiles-node-settings-form', context).drupalSetSummary(function (context) {
+        return Drupal.checkPlain($('.form-item-tiles-layout select :selected', context).text());
       });
     }
   };

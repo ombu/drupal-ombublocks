@@ -14,17 +14,17 @@
 /**
  * Define the types of context inheritance to provide.
  */
-define('OMBUBLOCKS_INHERIT_NONE', 0);
-define('OMBUBLOCKS_INHERIT_DEFAULT', 1);
-define('OMBUBLOCKS_INHERIT_PARENT', 2);
+define('TILES_INHERIT_NONE', 0);
+define('TILES_INHERIT_DEFAULT', 1);
+define('TILES_INHERIT_PARENT', 2);
 
 /**
  * Define the number of available steps for setting the width of a block.
  */
-define('OMBUBLOCKS_WIDTH_STEPS', 12);
+define('TILES_WIDTH_STEPS', 12);
 
 // @todo: this should be an admin page and a setting.
-define('OMBUBLOCKS_DEFAULT_CONTEXT', 'ombublocks-default');
+define('TILES_DEFAULT_CONTEXT', 'tiles-default');
 
 /**
  * Hook Implementations
@@ -33,20 +33,20 @@ define('OMBUBLOCKS_DEFAULT_CONTEXT', 'ombublocks-default');
 /**
  * Implements hook_init().
  */
-function ombublocks_init() {
+function tiles_init() {
 }
 
 /**
  * Implements hook_menu().
  */
-function ombublocks_menu() {
+function tiles_menu() {
   $items['admin/structure/block/manage/%/%/arrange'] = array(
     'title' => 'Move',
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_INLINE,
-    'page callback' => '_ombublocks_move',
+    'page callback' => '_tiles_move',
     'page arguments' => array(4, 5),
-    'access callback' => 'ombublocks_is_ombublock',
+    'access callback' => 'tiles_is_tile',
     'access arguments' => array(4, 5),
     'weight' => -9,
   );
@@ -56,30 +56,30 @@ function ombublocks_menu() {
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_INLINE,
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('ombublocks_set_width', 4, 5),
-    'access callback' => 'ombublocks_is_ombublock',
+    'page arguments' => array('tiles_set_width', 4, 5),
+    'access callback' => 'tiles_is_tile',
     'access arguments' => array(4, 5),
     'weight' => -9,
-    'file' => 'ombublocks.admin.inc',
+    'file' => 'tiles.admin.inc',
   );
 
-  $items['admin/ombublocks/add'] = array(
+  $items['admin/tiles/add'] = array(
     'title' => 'Add Block',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('ombublock_add_form', 3),
-    'access arguments' => array('add ombublocks'),
-    'file' => 'ombublocks.admin.inc',
+    'page arguments' => array('tiles_add_form', 3),
+    'access arguments' => array('add tiles'),
+    'file' => 'tiles.admin.inc',
   );
-  $items['admin/ombublocks/list'] = array(
-    'title' => 'View ombublocks',
-    'page callback' => 'ombublocks_get_link_list',
-    'access arguments' => array('add ombublocks'),
-    'file' => 'ombublocks.admin.inc',
+  $items['admin/tiles/list'] = array(
+    'title' => 'View tiles',
+    'page callback' => 'tiles_get_link_list',
+    'access arguments' => array('add tiles'),
+    'file' => 'tiles.admin.inc',
   );
-  $items['admin/ombublocks-save-weights'] = array(
-    'title' => 'View ombublocks',
-    'page callback' => '_ombublocks_save_weights',
-    'access arguments' => array('arrange ombublocks'),
+  $items['admin/tiles-save-weights'] = array(
+    'title' => 'View tiles',
+    'page callback' => '_tiles_save_weights',
+    'access arguments' => array('arrange tiles'),
   );
   return $items;
 }
@@ -87,19 +87,19 @@ function ombublocks_menu() {
 /**
  * Implements hook_menu_alter().
  */
-function ombublocks_menu_alter(&$items) {
+function tiles_menu_alter(&$items) {
   if (module_exists('entity_translation')) {
     $items['block/%bean_delta/translate']['context'] = MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE;
   }
   $items['admin/structure/block/manage/%/%/delete']['title'] = t('Delete');
   $items['admin/structure/block/manage/%/%/delete']['type'] = MENU_LOCAL_TASK;
   $items['admin/structure/block/manage/%/%/delete']['context'] = MENU_CONTEXT_INLINE;
-  $items['admin/structure/block/manage/%/%/delete']['page callback'] = 'ombublocks_delete';
+  $items['admin/structure/block/manage/%/%/delete']['page callback'] = 'tiles_delete';
   $items['admin/structure/block/manage/%/%/delete']['page arguments'] = array(4, 5);
-  $items['admin/structure/block/manage/%/%/delete']['access callback'] = 'ombublocks_is_ombublock';
+  $items['admin/structure/block/manage/%/%/delete']['access callback'] = 'tiles_is_tile';
   $items['admin/structure/block/manage/%/%/delete']['access arguments'] = array(4, 5);
-  $items['admin/structure/block/manage/%/%/delete']['file'] = 'ombublocks.admin.inc';
-  $items['admin/structure/block/manage/%/%/delete']['module'] = 'ombublocks';
+  $items['admin/structure/block/manage/%/%/delete']['file'] = 'tiles.admin.inc';
+  $items['admin/structure/block/manage/%/%/delete']['module'] = 'tiles';
 
   // Remove block configure context.
   // unset($items['admin/structure/block/manage/%/%/configure']['context']);
@@ -108,9 +108,9 @@ function ombublocks_menu_alter(&$items) {
 /**
  * Implements hook_menu_local_tasks_alter().
  */
-function ombublocks_menu_local_tasks_alter(&$data, $router_item, $root_path) {
+function tiles_menu_local_tasks_alter(&$data, $router_item, $root_path) {
   // Add "Add a Block" link to all pages that aren't admin paths.
-  if (user_access('add ombublocks') && !path_is_admin(current_path())) {
+  if (user_access('add tiles') && !path_is_admin(current_path())) {
     if (!$data['tabs']) {
       $data['tabs'][0] = array(
         'count' => 0,
@@ -118,12 +118,12 @@ function ombublocks_menu_local_tasks_alter(&$data, $router_item, $root_path) {
       );
     }
 
-    $context = _ombublocks_get_active_context();
+    $context = _tiles_get_active_context();
     $data['tabs'][0]['output'][] = array(
       '#theme' => 'menu_local_task',
       '#link' => array(
         'title' => t('Add Block'),
-        'href' => 'admin/ombublocks/add/' . ($context ? $context->name : ''),
+        'href' => 'admin/tiles/add/' . ($context ? $context->name : ''),
         'localized_options' => array(
           'query' => drupal_get_destination(),
           'attributes' => array(
@@ -146,27 +146,27 @@ function ombublocks_menu_local_tasks_alter(&$data, $router_item, $root_path) {
 /**
  * Implements hook_module_implements_alter().
  */
-function ombublocks_module_implements_alter(&$implementations, $hook) {
+function tiles_module_implements_alter(&$implementations, $hook) {
   if ($hook == 'menu_alter') {
-    $group = $implementations['ombublocks'];
-    unset($implementations['ombublocks']);
-    $implementations['ombublocks'] = $group;
+    $group = $implementations['tiles'];
+    unset($implementations['tiles']);
+    $implementations['tiles'] = $group;
   }
 }
 
 /**
  * Implements hook_permission().
  */
-function ombublocks_permission() {
+function tiles_permission() {
   return array(
-    'administer ombublocks' => array(
-      'title' => t('Administer ombublocks'),
+    'administer tiles' => array(
+      'title' => t('Administer tiles'),
     ),
-    'arrange ombublocks' => array(
-      'title' => t('Arrange ombublocks'),
+    'arrange tiles' => array(
+      'title' => t('Arrange tiles'),
     ),
-    'add ombublocks' => array(
-      'title' => t('Add new ombublocks'),
+    'add tiles' => array(
+      'title' => t('Add new tiles'),
     ),
   );
 }
@@ -174,7 +174,7 @@ function ombublocks_permission() {
 /**
  * Implements hook_ctools_plugin_api().
  */
-function ombublocks_ctools_plugin_api($module, $api) {
+function tiles_ctools_plugin_api($module, $api) {
   if ($module == 'context' && $api == 'plugins') {
     return array('version' => 3);
   }
@@ -183,13 +183,13 @@ function ombublocks_ctools_plugin_api($module, $api) {
 /**
  * Implements hook_context_plugins().
  */
-function ombublocks_context_plugins() {
+function tiles_context_plugins() {
   $plugins = array();
-  $plugins['ombublocks_context_reaction_block'] = array(
+  $plugins['tiles_context_reaction_block'] = array(
     'handler' => array(
-      'path' => drupal_get_path('module', 'ombublocks') . '/plugins',
-      'file' => 'ombublocks_context_reaction_block.inc',
-      'class' => 'ombublocks_context_reaction_block',
+      'path' => drupal_get_path('module', 'tiles') . '/plugins',
+      'file' => 'tiles_context_reaction_block.inc',
+      'class' => 'tiles_context_reaction_block',
       'parent' => 'context_reaction_block',
     ),
   );
@@ -199,14 +199,14 @@ function ombublocks_context_plugins() {
 /**
  * Implements of hook_context_registry().
  */
-function ombublocks_context_registry() {
+function tiles_context_registry() {
   $registry = array();
 
   $registry['reactions'] = array(
-    'ombublocks' => array(
-      'title' => t('Ombublocks Blocks'),
+    'tiles' => array(
+      'title' => t('Tiles Blocks'),
       'description' => 'This reaction enforces proper weights for added blocks.',
-      'plugin' => 'ombublocks_context_reaction_block',
+      'plugin' => 'tiles_context_reaction_block',
     ),
   );
   return $registry;
@@ -215,8 +215,8 @@ function ombublocks_context_registry() {
 /**
  * Implements hook_page_build().
  */
-function ombublocks_page_build(&$page) {
-  if ($plugin = context_get_plugin('reaction', 'ombublocks')) {
+function tiles_page_build(&$page) {
+  if ($plugin = context_get_plugin('reaction', 'tiles')) {
     // Make sure context_reaction_block properly rebuilds block list.
     drupal_static_reset('context_reaction_block_list');
 
@@ -227,24 +227,24 @@ function ombublocks_page_build(&$page) {
 /**
  * Implements hook_preprocess_block().
  */
-function ombublocks_preprocess_block(&$variables) {
+function tiles_preprocess_block(&$variables) {
   global $user;
-  if (user_access('arrange ombublocks', $user) && _ombublocks_has_block_access()) {
-    _ombublocks_js_init();
+  if (user_access('arrange tiles', $user) && _tiles_has_block_access()) {
+    _tiles_js_init();
   }
 
   // Add weight to block.
-  if (ombublocks_is_ombublock($variables['block']->module, $variables['block']->delta)) {
-    $variables['classes_array'][] = 'ombublock';
-    $variables['block']->width = ombublocks_block_get_width($variables['block']->module, $variables['block']->delta);
+  if (tiles_is_tile($variables['block']->module, $variables['block']->delta)) {
+    $variables['classes_array'][] = 'tile';
+    $variables['block']->width = tiles_block_get_width($variables['block']->module, $variables['block']->delta);
 
-    // Add data attributes to ombublocks to facilitate moving.
+    // Add data attributes to tiles to facilitate moving.
     $variables['attributes_array']['data-module'] = $variables['block']->module;
     $variables['attributes_array']['data-delta'] = $variables['block']->delta;
   }
 
-  // Hide contextual links for all blocks except ombublocks.
-  if (!ombublocks_is_ombublock($variables['block']->module, $variables['block']->delta) || !_ombublocks_has_block_access()) {
+  // Hide contextual links for all blocks except tiles.
+  if (!tiles_is_tile($variables['block']->module, $variables['block']->delta) || !_tiles_has_block_access()) {
     /* $variables['title_suffix']['contextual_links']['#access'] = FALSE; */
   }
 }
@@ -252,7 +252,7 @@ function ombublocks_preprocess_block(&$variables) {
 /**
  * Implements hook_block_view_MODULE_DELTA_alter().
  */
-function ombublocks_block_view_system_main_alter(&$build, $block) {
+function tiles_block_view_system_main_alter(&$build, $block) {
   // Add contextual links to build array for system main, to allow system main
   // block to be orderable.  Only do this for front end theme.
   if (!path_is_admin(current_path())) {
@@ -266,18 +266,18 @@ function ombublocks_block_view_system_main_alter(&$build, $block) {
 }
 
 /**
- * Implements hook_ombublocks_info().
+ * Implements hook_tiles_info().
  */
-function ombublocks_ombublocks_info() {
+function tiles_tiles_info() {
   // Naming convention is MODULE__DELTA.
   $blocks = array();
 
-  // Add system main as an ombublock.
+  // Add system main as a tile.
   $blocks['system__main'] = 'Main page content';
 
-  // All beans are ombublocks for now, so don't include all beans in block info.
+  // All beans are tiles for now, so don't include all beans in block info.
   $beans = bean_get_all_beans();
-  $bean_types = ombublocks_get_types();
+  $bean_types = tiles_get_types();
   foreach ($beans as $bean) {
     if (array_key_exists($bean->type, $bean_types)) {
       $blocks['bean__' . $bean->delta] = $bean->label;
@@ -289,7 +289,7 @@ function ombublocks_ombublocks_info() {
 /**
  * Implements hook_contextual_links_view_alter().
  */
-function ombublocks_contextual_links_view_alter(&$element, $items) {
+function tiles_contextual_links_view_alter(&$element, $items) {
   // Remove configure block link for all blocks.
   if (isset($element['#element']['#block'])) {
     unset($element['#links']['block-configure']);
@@ -322,7 +322,7 @@ function ombublocks_contextual_links_view_alter(&$element, $items) {
 /**
  * Implements hook_admin_paths().
  */
-function ombublocks_admin_paths() {
+function tiles_admin_paths() {
   return array(
     'node/*/add-block' => TRUE,
     'taxonomy/term/*/add-block' => TRUE,
@@ -332,23 +332,23 @@ function ombublocks_admin_paths() {
 /**
  * Implements hook_form_BASE_FORM_ID_alter().
  */
-function ombublocks_form_node_form_alter(&$form, $form_state) {
+function tiles_form_node_form_alter(&$form, $form_state) {
   // Add option to select custom contexts for new pages.
   // @todo: should add an option to limit by node type.
   if (!$form['nid']['#value'] && !in_array($form['type']['#value'], array('blog_post'))) {
-    $form['ombublocks'] = array(
+    $form['tiles'] = array(
       '#type' => 'fieldset',
       '#title' => t('Initial page layout'),
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
-      '#access' => user_access('add ombublocks'),
+      '#access' => user_access('add tiles'),
       '#group' => 'additional_settings',
       '#tree' => FALSE,
       '#attached' => array(
-        'js' => array(drupal_get_path('module', 'ombublocks') . '/js/ombublocks.admin.js'),
+        'js' => array(drupal_get_path('module', 'tiles') . '/js/tiles.admin.js'),
       ),
       '#attributes' => array(
-        'class' => array('ombublocks-node-settings-form'),
+        'class' => array('tiles-node-settings-form'),
       ),
     );
 
@@ -366,16 +366,16 @@ function ombublocks_form_node_form_alter(&$form, $form_state) {
     </dl>
 EOD;
 
-    $form['ombublocks']['ombublocks_layout'] = array(
+    $form['tiles']['tiles_layout'] = array(
       '#title' => t('Layout'),
       '#type' => 'select',
       '#options' => array(
-        OMBUBLOCKS_INHERIT_NONE => 'New blank layout',
-        OMBUBLOCKS_INHERIT_DEFAULT => 'Default layout',
-        OMBUBLOCKS_INHERIT_PARENT => 'Inherited from menu parent',
+        TILES_INHERIT_NONE => 'New blank layout',
+        TILES_INHERIT_DEFAULT => 'Default layout',
+        TILES_INHERIT_PARENT => 'Inherited from menu parent',
       ),
       '#description' => $description,
-      '#default_value' => OMBUBLOCKS_INHERIT_DEFAULT,
+      '#default_value' => TILES_INHERIT_DEFAULT,
     );
   }
 }
@@ -383,69 +383,69 @@ EOD;
 /**
  * Implements hook_node_insert().
  */
-function ombublocks_node_insert($node) {
+function tiles_node_insert($node) {
   // Create a new context for this node.
-  _ombublocks_create_path_context(
+  _tiles_create_path_context(
     'node/' . $node->nid,
-    isset($node->ombublocks_layout) ? $node->ombublocks_layout : NULL,
-    isset($node->ombublocks) ? $node->ombublocks : array()
+    isset($node->tiles_layout) ? $node->tiles_layout : NULL,
+    isset($node->tiles) ? $node->tiles : array()
   );
 }
 
 /**
  * Implements hook_form_FORM_ID_alter().
  */
-function ombublocks_form_bean_delete_confirm_alter(&$form, $form_state) {
+function tiles_form_bean_delete_confirm_alter(&$form, $form_state) {
   // Add callback to delete bean from context.
   if (isset($_GET['destination'])) {
-    $form['#context'] = 'ombublocks-' . _ombublocks_normalize_path($_GET['destination']);
-    $form['#submit'][] = 'ombublocks_delete_submit';
+    $form['#context'] = 'tiles-' . _tiles_normalize_path($_GET['destination']);
+    $form['#submit'][] = 'tiles_delete_submit';
   }
 }
 
 /**
  * Implements hook_form_FORM_ID_alter().
  */
-function ombublocks_form_bean_form_alter(&$form, $form_state, $form_id) {
+function tiles_form_bean_form_alter(&$form, $form_state, $form_id) {
   if (isset($_GET['destination'])) {
-    $form['#context'] = 'ombublocks-' . _ombublocks_normalize_path($_GET['destination']);
+    $form['#context'] = 'tiles-' . _tiles_normalize_path($_GET['destination']);
   }
 
   // Add in width selector to bean forms.  This only covers edit bean forms,
   // since adding a new bean form is coming directly through
-  // ombublock_add_form().
+  // tiles_add_form().
   $form['width'] = array(
     '#type' => 'select',
     '#title' => t('Width'),
-    '#options' => _ombublocks_width_step_options(),
-    '#default_value' => !empty($form['bean']['#value']->width) ? $form['bean']['#value']->width : OMBUBLOCKS_WIDTH_STEPS,
+    '#options' => _tiles_width_step_options(),
+    '#default_value' => !empty($form['bean']['#value']->width) ? $form['bean']['#value']->width : TILES_WIDTH_STEPS,
     '#description' => t('Select the width of this block.'),
   );
-  $form['#submit'][] = 'ombublocks_form_bean_form_save_weight';
+  $form['#submit'][] = 'tiles_form_bean_form_save_weight';
 }
 
 /**
  * Save weight for bean.
  */
-function ombublocks_form_bean_form_save_weight($form, $form_state) {
+function tiles_form_bean_form_save_weight($form, $form_state) {
   if (isset($form['#context'])) {
     $bean = $form_state['bean'];
-    ombublocks_block_set_width('bean', $bean->delta, $form_state['values']['width'], $form['#context']);
+    tiles_block_set_width('bean', $bean->delta, $form_state['values']['width'], $form['#context']);
   }
 }
 
 /**
  * Implements hook_entity_load().
  */
-function ombublocks_entity_load($entities, $type) {
+function tiles_entity_load($entities, $type) {
   // Save the block width for beans.
   if ($type == 'bean') {
     $context_id = NULL;
     if (isset($_GET['destination'])) {
-      $context_id = 'ombublocks-' . _ombublocks_normalize_path($_GET['destination']);
+      $context_id = 'tiles-' . _tiles_normalize_path($_GET['destination']);
     }
     foreach ($entities as $entity) {
-      $entity->width = ombublocks_block_get_width('bean', $entity->delta, $context_id);
+      $entity->width = tiles_block_get_width('bean', $entity->delta, $context_id);
     }
   }
 }
@@ -454,11 +454,11 @@ function ombublocks_entity_load($entities, $type) {
 /**
  * Implements hook_bean_access().
  */
-function ombublocks_bean_access($bean, $op, $account) {
-  // Tie ombublock based beans visibility to menu access.
-  if ($bean && $op == 'view' && ($context = _ombublocks_get_active_context()) && isset($context->reactions['ombublocks']['blocks'])) {
+function tiles_bean_access($bean, $op, $account) {
+  // Tie tile based beans visibility to menu access.
+  if ($bean && $op == 'view' && ($context = _tiles_get_active_context()) && isset($context->reactions['tiles']['blocks'])) {
 
-    if (array_key_exists('bean-' . $bean->delta, $context->reactions['ombublocks']['blocks'])) {
+    if (array_key_exists('bean-' . $bean->delta, $context->reactions['tiles']['blocks'])) {
       $item = menu_get_item(current_path());
       return $item['access'] && current_path() != variable_get('site_403', FALSE) && user_access('view any ' . $bean->type . ' bean');
     }
@@ -468,10 +468,10 @@ function ombublocks_bean_access($bean, $op, $account) {
 /**
  * Implements hook_block_view_alter().
  */
-function ombublocks_block_view_alter(&$data, $block) {
-  // Tie ombublock based block visibility to menu access.
-  if (($context = _ombublocks_get_active_context()) && isset($context->reactions['ombublocks']['blocks'])) {
-    if (array_key_exists($block->module . '-' . $block->delta, $context->reactions['ombublocks']['blocks'])) {
+function tiles_block_view_alter(&$data, $block) {
+  // Tie tile based block visibility to menu access.
+  if (($context = _tiles_get_active_context()) && isset($context->reactions['tiles']['blocks'])) {
+    if (array_key_exists($block->module . '-' . $block->delta, $context->reactions['tiles']['blocks'])) {
       $item = menu_get_item();
       if (!$item['access']) {
         $data['content'] = '';
@@ -485,27 +485,27 @@ function ombublocks_block_view_alter(&$data, $block) {
  */
 
 /**
- * Returns an array of ombublocks defined by hook_ombublocks_info().
+ * Returns an array of tiles defined by hook_tiles_info().
  *
  * @return array
- *   Array of blocks available for ombublocks in the form of MODULE__DELTA.
+ *   Array of blocks available for tiles in the form of MODULE__DELTA.
  */
-function ombublocks_get() {
-  $ombublocks = &drupal_static(__FUNCTION__, array());
-  if (empty($ombublocks)) {
-    foreach (module_implements('ombublocks_info') as $module) {
-      $ombublocks = array_merge($ombublocks, module_invoke($module,
-        'ombublocks_info'));
+function tiles_get() {
+  $tiles = &drupal_static(__FUNCTION__, array());
+  if (empty($tiles)) {
+    foreach (module_implements('tiles_info') as $module) {
+      $tiles = array_merge($tiles, module_invoke($module,
+        'tiles_info'));
     }
-    drupal_alter('ombublocks_info', $ombublocks);
+    drupal_alter('tiles_info', $tiles);
   }
-  return $ombublocks;
+  return $tiles;
 }
 
 /**
- * Returns a list of ombublock types
+ * Returns a list of tile types
  */
-function ombublocks_get_types() {
+function tiles_get_types() {
   $_types = bean_get_types();
   $types = array();
   foreach ($_types as $k => $v) {
@@ -513,28 +513,28 @@ function ombublocks_get_types() {
       $types[$k] = $v->getLabel();
     }
   }
-  drupal_alter('ombublocks_types', $types);
+  drupal_alter('tiles_types', $types);
   return $types;
 }
 
 /**
- * Whether a block is an ombublock
+ * Whether a bean is a tile.
  *
  * @param object $bean
  *   The Bean object.
  *
  * @return bool
- *   True if the bean is available for ombublocks.
+ *   True if the bean is available for tiles.
  */
-function ombublocks_bean_is_ombublock($bean) {
-  // All beans are ombublocks for now.
+function tiles_bean_is_tile($bean) {
+  // All beans are tiles for now.
   return TRUE;
   // $slug = 'bean' . '__' . $bean->delta;
-  // return array_key_exists($slug, ombublocks_get());
+  // return array_key_exists($slug, tiles_get());
 }
 
 /**
- * Whether a block is an ombublock
+ * Whether a block is a tile.
  *
  * @param string $module
  *   The module the block belongs to.
@@ -542,11 +542,11 @@ function ombublocks_bean_is_ombublock($bean) {
  *   The delta of the block
  *
  * @return bool
- *   True if block is defined as an ombublock.
+ *   True if block is defined as a tile.
  */
-function ombublocks_is_ombublock($module, $delta) {
+function tiles_is_tile($module, $delta) {
   $slug = $module . '__' . $delta;
-  return array_key_exists($slug, ombublocks_get());
+  return array_key_exists($slug, tiles_get());
 }
 
 /**
@@ -560,9 +560,9 @@ function ombublocks_is_ombublock($module, $delta) {
  *   The context in which to find the block width.  Will default to a `global`
  *   context if NULL.
  */
-function ombublocks_block_set_width($module, $delta, $width, $context_id = NULL) {
+function tiles_block_set_width($module, $delta, $width, $context_id = NULL) {
   if (is_null($context_id)) {
-    $context = _ombublocks_get_active_context();
+    $context = _tiles_get_active_context();
     if ($context) {
       $context_id = $context->name;
     }
@@ -571,7 +571,7 @@ function ombublocks_block_set_width($module, $delta, $width, $context_id = NULL)
     }
   }
 
-  $bid = ombublocks_block_get_bid($module, $delta);
+  $bid = tiles_block_get_bid($module, $delta);
   if ($bid) {
     $check = db_query("SELECT bid FROM {block_width} WHERE context_id = :context_id AND bid = :bid", array(
       ':context_id' => $context_id,
@@ -610,9 +610,9 @@ function ombublocks_block_set_width($module, $delta, $width, $context_id = NULL)
  * @return int
  *   The width of the given block.
  */
-function ombublocks_block_get_width($module, $delta, $context_id = NULL) {
+function tiles_block_get_width($module, $delta, $context_id = NULL) {
   if (is_null($context_id)) {
-    $context = _ombublocks_get_active_context();
+    $context = _tiles_get_active_context();
     if ($context) {
       $context_id = $context->name;
     }
@@ -620,7 +620,7 @@ function ombublocks_block_get_width($module, $delta, $context_id = NULL) {
 
   // Pull in the width of the block from the given context, defaulting to the
   // global context if present.
-  $bid = ombublocks_block_get_bid($module, $delta);
+  $bid = tiles_block_get_bid($module, $delta);
   return db_query("SELECT width FROM {block_width} WHERE context_id in (:context_id) AND bid = :bid LIMIT 1", array(
     ':context_id' => array($context_id, 'global'),
     ':bid' => $bid,
@@ -630,7 +630,7 @@ function ombublocks_block_get_width($module, $delta, $context_id = NULL) {
 /**
  * Gets the bid of a block based on module, delta and theme.
  */
-function ombublocks_block_get_bid($module, $delta, $theme = NULL) {
+function tiles_block_get_bid($module, $delta, $theme = NULL) {
   return db_query("SELECT bid FROM {block} WHERE module = :module AND delta = :delta AND theme = :theme", array(
     ':module' => $module,
     ':delta' => $delta,
@@ -649,34 +649,34 @@ function ombublocks_block_get_bid($module, $delta, $theme = NULL) {
  *   The internal path to create a context for.
  * @param string $inheritance_type
  *   The type of context inheritance to do.  The available options are:
- *     - OMBUBLOCKS_INHERIT_NONE => New blank layout
- *     - OMBUBLOCKS_INHERIT_DEFAULT => Default layout
- *     - OMBUBLOCKS_INHERIT_PARENT => Inherited from menu parent
+ *     - TILES_INHERIT_NONE => New blank layout
+ *     - TILES_INHERIT_DEFAULT => Default layout
+ *     - TILES_INHERIT_PARENT => Inherited from menu parent
  * @param array $default_blocks
  *   Array of blocks to add to the node context.  Only applies if
- *   $inheritance_type is OMBUBLOCKS_INHERIT_NONE.
+ *   $inheritance_type is TILES_INHERIT_NONE.
  *
  * @return $context
  *   The fully created context object.
  */
-function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_INHERIT_NONE, $default_blocks = array()) {
+function _tiles_create_path_context($path, $inheritance_type = TILES_INHERIT_NONE, $default_blocks = array()) {
   // Check to see if context already exists.
-  if ($context = context_load('ombublocks-' . _ombublocks_normalize_path($path))) {
+  if ($context = context_load('tiles-' . _tiles_normalize_path($path))) {
     return $context;
   }
 
   // Create a new context object based on inheritance type.
   switch ($inheritance_type) {
-    case OMBUBLOCKS_INHERIT_DEFAULT:
-      $context = context_load(OMBUBLOCKS_DEFAULT_CONTEXT);
+    case TILES_INHERIT_DEFAULT:
+      $context = context_load(TILES_DEFAULT_CONTEXT);
       // Only use default context if it exists, otherwise use new context.
       if ($context) {
         break;
       }
 
-    case OMBUBLOCKS_INHERIT_NONE:
+    case TILES_INHERIT_NONE:
       $context = new stdClass();
-      $context->tag = 'ombublocks';
+      $context->tag = 'tiles';
 
       // Make sure system_main is always in the default block array.  That way
       // the main content block can be orderable within this context (ftw!).
@@ -691,10 +691,10 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
 
       // For now assume that $default_blocks is well structured.  We can add in
       // checking in the future.
-      $context->reactions['ombublocks']['blocks'] = $default_blocks;
+      $context->reactions['tiles']['blocks'] = $default_blocks;
       break;
 
-    case OMBUBLOCKS_INHERIT_PARENT:
+    case TILES_INHERIT_PARENT:
       // Try and find the menu parent.
       $mlid = db_query_range("SELECT mlid FROM {menu_links} WHERE link_path = :path AND menu_name = :menu_name AND module = 'menu' ORDER BY mlid ASC", 0, 1, array(
         ':path' => $path,
@@ -708,21 +708,21 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
         $item = menu_link_load($mlid);
         $parent = _menu_link_find_parent($item);
         if ($parent) {
-          $context = context_load('ombublocks-' . _ombublocks_normalize_path($parent['link_path']));
+          $context = context_load('tiles-' . _tiles_normalize_path($parent['link_path']));
         }
       }
 
       // Default to creating a new context, if parent context doesn't exist.
       if (!$context) {
         $context = new stdClass();
-        $context->tag = 'ombublocks';
+        $context->tag = 'tiles';
       }
       break;
   }
 
   // Normalize path and set as context name.
-  $path_name = _ombublocks_normalize_path($path);
-  $context->name = 'ombublocks-' . $path_name;
+  $path_name = _tiles_normalize_path($path);
+  $context->name = 'tiles-' . $path_name;
   $context->description = '';
 
   // Set the path as the only condition.
@@ -735,9 +735,9 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
   );
 
   // If context has been inherited, then duplicate bean blocks.
-  if ($inheritance_type != OMBUBLOCKS_INHERIT_NONE && isset($context->reactions['ombublocks'])) {
-    $blocks = $context->reactions['ombublocks']['blocks'];
-    $context->reactions['ombublocks']['blocks'] = array();
+  if ($inheritance_type != TILES_INHERIT_NONE && isset($context->reactions['tiles'])) {
+    $blocks = $context->reactions['tiles']['blocks'];
+    $context->reactions['tiles']['blocks'] = array();
     foreach ($blocks as $id => $block) {
       if ($block['module'] == 'bean') {
         $bean = bean_load_delta($block['delta']);
@@ -746,19 +746,19 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
           $bean->delta = NULL;
           bean_save($bean);
           $block['delta'] = $bean->delta;
-          $context->reactions['ombublocks']['blocks']['bean-' . $bean->delta] = $block;
+          $context->reactions['tiles']['blocks']['bean-' . $bean->delta] = $block;
         }
       }
       else {
-        $context->reactions['ombublocks']['blocks'][$id] = $block;
+        $context->reactions['tiles']['blocks'][$id] = $block;
       }
     }
   }
 
   // Check if any of the blocks have widths set, and save for this context.
-  foreach ($context->reactions['ombublocks']['blocks'] as $id => $block) {
+  foreach ($context->reactions['tiles']['blocks'] as $id => $block) {
     if (isset($block['width'])) {
-      ombublocks_block_set_width($block['module'], $block['delta'], $block['width'], $context->name);
+      tiles_block_set_width($block['module'], $block['delta'], $block['width'], $context->name);
     }
   }
 
@@ -768,7 +768,7 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
 }
 
 /**
- * Normalize a menu path for use when saving/loading ombublocks contexts.
+ * Normalize a menu path for use when saving/loading tiles contexts.
  *
  * @param string $path
  *   A path string, in the form of path/path.
@@ -776,18 +776,18 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
  * @return string
  *   A normalized string for use in context, in the form of path-path.
  */
-function _ombublocks_normalize_path($path) {
+function _tiles_normalize_path($path) {
   return str_replace('/', '-', $path);
 }
 
 /**
  * Get the active context for the current page.
  */
-function _ombublocks_get_active_context() {
-  // Get the namespace for the active ombublocks context.
+function _tiles_get_active_context() {
+  // Get the namespace for the active tiles context.
   $contexts = context_active_contexts();
   foreach ($contexts as $context) {
-    if ($context->tag == 'ombublocks') {
+    if ($context->tag == 'tiles') {
       return $context;
     }
   }
@@ -798,14 +798,14 @@ function _ombublocks_get_active_context() {
 /**
  * Stub function, handled in js.
  */
-function _ombublocks_move($bean) {
+function _tiles_move($bean) {
 }
 
 /**
  * Check to see if the current user has access to edit the blocks on the current
  * page by checking to see if the user access to edit the current page.
  */
-function _ombublocks_has_block_access() {
+function _tiles_has_block_access() {
   // Node access.
   if ($node = menu_get_object()) {
     return node_access('update', $node);
@@ -833,21 +833,21 @@ function _ombublocks_has_block_access() {
   }
 
   // Default to block move access.
-  return user_access('arrange ombublocks');
+  return user_access('arrange tiles');
 }
 
 /**
  * Save the weights of blocks to the current page's context.
  */
-function _ombublocks_save_weights() {
+function _tiles_save_weights() {
   $params = json_decode(file_get_contents('php://input'));
   if ($params->active_context) {
     $context = context_load($params->active_context);
 
     // If system main exists in incoming blocks, make sure that it exists in the
     // context as well, otherwise weights won't save properly.
-    if (in_array('system-main', $params->blocks) && !array_key_exists('system-main', $context->reactions['ombublocks']['blocks'])) {
-      $context->reactions['ombublocks']['blocks']['system_main'] = array(
+    if (in_array('system-main', $params->blocks) && !array_key_exists('system-main', $context->reactions['tiles']['blocks'])) {
+      $context->reactions['tiles']['blocks']['system_main'] = array(
         'module' => 'system',
         'delta' => 'main',
         'region' => $params->region,
@@ -855,7 +855,7 @@ function _ombublocks_save_weights() {
       );
     }
 
-    foreach ($context->reactions['ombublocks']['blocks'] as $key => &$value) {
+    foreach ($context->reactions['tiles']['blocks'] as $key => &$value) {
       if ($value['region'] !== str_replace('-', '_', $params->region)) {
         continue;
       }
@@ -873,23 +873,23 @@ function _ombublocks_save_weights() {
  *
  * @todo: this should be hookable.
  */
-function _ombublocks_get_regions() {
+function _tiles_get_regions() {
   return system_region_list(variable_get('theme_default', NULL));
 }
 
 /**
  * Initialize the javascript for the current page, if there are active
- * ombublocks.
+ * tiles.
  */
-function _ombublocks_js_init() {
+function _tiles_js_init() {
   static $initialized;
 
   if (!$initialized) {
-    drupal_add_js(drupal_get_path('module', 'ombublocks') . '/js/ombublocks.js');
+    drupal_add_js(drupal_get_path('module', 'tiles') . '/js/tiles.js');
 
-    $context = _ombublocks_get_active_context();
+    $context = _tiles_get_active_context();
     if ($context) {
-      drupal_add_js(array('ombublocks' => array('active_context' => $context->name)), 'setting');
+      drupal_add_js(array('tiles' => array('active_context' => $context->name)), 'setting');
     }
 
     $initialized = TRUE;
@@ -899,8 +899,8 @@ function _ombublocks_js_init() {
 /**
  * Returns options for selecting width steps.
  */
-function _ombublocks_width_step_options() {
-  $steps = OMBUBLOCKS_WIDTH_STEPS;
+function _tiles_width_step_options() {
+  $steps = TILES_WIDTH_STEPS;
 
   $options = array();
   for ($i = 1; $i <= $steps; $i++) {

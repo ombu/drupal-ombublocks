@@ -2,15 +2,15 @@
 
 /**
  * @file
- * Install functions for ombublocks.module.
+ * Install functions for tiles.module.
  */
 
 /**
  * Implements hook_schema().
  */
-function ombublocks_schema() {
+function tiles_schema() {
   $schema['block_width'] = array(
-    'description' => 'Stores widths of ombublocks',
+    'description' => 'Stores widths of tiles',
     'fields' => array(
       'context_id' => array(
         'description' => 'The primary identifier for a context.',
@@ -52,7 +52,7 @@ function ombublocks_schema() {
 /**
  * Adds a context_id column to allow global blocks to get a per-context width.
  */
-function ombublocks_update_7001() {
+function tiles_update_7001() {
   db_drop_unique_key('block_width', 'bid');
   db_add_field('block_width', 'context_id', array(
     'description' => 'The primary identifier for a context.',

@@ -1,45 +1,45 @@
 (function ($) {
-  Drupal.behaviors.ombublocks = {
+  Drupal.behaviors.tiles = {
     attach: function(context,settings) {
       $('.contextual-links .block-arrange a', context).click(function (e) {
         e.preventDefault();
         e.stopPropagation();
         $(e.target).blur();
-        if ($(e.target).closest(Ombublock.prototype.selector.block).hasClass('dragging')) {
+        if ($(e.target).closest(Tiles.prototype.selector.block).hasClass('dragging')) {
           return;
         }
-        block = new Ombublock(e.target);
+        block = new Tiles(e.target);
         block.setDraggable();
       });
     }
-  }
+  };
 
   /**
-   * @class Ombublock
-   *   Encapsulate js functionality for an ombublock
+   * @class Tiles
+   *   Encapsulate js functionality for a tile.
    */
 
-  Ombublock = function(domNode) {
+  Tiles = function(domNode) {
     $d = $(domNode);
     this.domNode = $d.attr('data-type') === 'block' ? $d : $d.closest(this.selector.block);
     this.region = $(this.domNode).closest(this.selector.region);
   };
 
-  Ombublock.prototype.selector = {
+  Tiles.prototype.selector = {
     block: '[data-type="block"]',
-    ombublock: '.ombublock',
+    tile: '.tile',
     region: '[data-type="region"]',
     row: '.row-fluid'
   };
 
-  Ombublock.prototype.setDraggable = function() {
+  Tiles.prototype.setDraggable = function() {
     this.domNode.addClass('dragging');
     $('body').addClass('dragging');
     this.addMoveOverlay();
     return this;
   };
 
-  Ombublock.prototype.unsetDraggable = function() {
+  Tiles.prototype.unsetDraggable = function() {
     this.domNode.removeClass('dragging');
     $('body').removeClass('dragging');
     this.removeMoveOverlay();
@@ -49,7 +49,7 @@
   /**
    * TODO Use jQuery template
    */
-  Ombublock.prototype.addMoveOverlay = function() {
+  Tiles.prototype.addMoveOverlay = function() {
     // Prevent irresponsible js plugins (twitter I'm looking at you) from using
     // document.write after a block is moved. Using document.write after a page
     // load overwrites the whole dom.
@@ -71,7 +71,7 @@
    * TODO Check if we need to unbind events of children elements before we
    * remove the parent to avoid memory leaks (some libs handle this)
    */
-  Ombublock.prototype.removeMoveOverlay = function() {
+  Tiles.prototype.removeMoveOverlay = function() {
     $('.drag-overlay', this.domNode).remove();
     return this;
   };
@@ -79,16 +79,16 @@
   /**
    * Update left/right buttons
    */
-  Ombublock.prototype.refreshMoveButtons = function() {
+  Tiles.prototype.refreshMoveButtons = function() {
     return this;
-  }
+  };
 
-  Ombublock.prototype.moveLeft = function(e) {
+  Tiles.prototype.moveLeft = function(e) {
     this.removeRows(this.region);
-    var prev = this.domNode.prev(this.selector.ombublock);
+    var prev = this.domNode.prev(this.selector.tile);
     if (prev.length === 0) {
       this.addRows(this.region);
-      alert('This is already the first block in this region.')
+      alert('This is already the first block in this region.');
       return false;
     }
     this.moved = true;
@@ -97,12 +97,12 @@
     return false;
   };
 
-  Ombublock.prototype.moveRight = function(e) {
+  Tiles.prototype.moveRight = function(e) {
     this.removeRows(this.region);
-    var next = this.domNode.next(this.selector.ombublock);
+    var next = this.domNode.next(this.selector.tile);
     if (next.length === 0) {
       this.addRows(this.region);
-      alert('This is already the first block in this region.')
+      alert('This is already the first block in this region.');
       return false;
     }
     this.moved = true;
@@ -111,7 +111,7 @@
     return false;
   };
 
-  Ombublock.prototype.moveCancel = function(e) {
+  Tiles.prototype.moveCancel = function(e) {
     // if there hasen't yet been any moving action, do a soft reset
     if (typeof this.moved === 'undefined' || !this.moved) {
       this.unsetDraggable();
@@ -126,7 +126,7 @@
   /**
    * Static methods
    */
-  Ombublock.prototype.saveState = function() {
+  Tiles.prototype.saveState = function() {
     var region_node, region, ids;
     region = this.region.attr('data-name');
     ids = $.makeArray($(this.selector.block, this.region).map(function() {
@@ -134,8 +134,8 @@
     }));
     $.ajax({
       type: 'POST',
-      url: '/admin/ombublocks-save-weights',
-      data: JSON.stringify({ blocks: ids, region: region, active_context: Drupal.settings.ombublocks.active_context }),
+      url: '/admin/tiles-save-weights',
+      data: JSON.stringify({ blocks: ids, region: region, active_context: Drupal.settings.tiles.active_context }),
       success: $.proxy(this, 'saveHandleSuccess'),
       error: this.saveHandleError,
       contentType: 'application/json',
@@ -143,21 +143,21 @@
     });
   };
 
-  Ombublock.prototype.saveHandleSuccess = function() {
+  Tiles.prototype.saveHandleSuccess = function() {
     this.unsetDraggable();
   };
 
-  Ombublock.prototype.saveHandleError = function() {
+  Tiles.prototype.saveHandleError = function() {
     alert('Sorry, there was a problem saving the updated layout. Please try again after the page reloads.');
     window.location.reload();
   };
 
-  Ombublock.prototype.removeRows = function(region) {
+  Tiles.prototype.removeRows = function(region) {
     region.find(this.selector.block).unwrap();
     return region;
   };
 
-  Ombublock.prototype.addRows = function(region) {
+  Tiles.prototype.addRows = function(region) {
     var blocks = region.find(this.selector.block).detach();
     var l = blocks.length;
     var curr_row = $('<div class="row-fluid"></div>');
@@ -166,7 +166,7 @@
     var max_cols_per_row = 12;
 
     for (i = 0; i < l; i++) {
-      width = Ombublock.getWidth(blocks[i]);
+      width = Tiles.getWidth(blocks[i]);
 
       if ((col_count + width) <= max_cols_per_row) {
         col_count += width;
@@ -184,7 +184,7 @@
     return region;
   };
 
-  Ombublock.getWidth = function(blockDomNode) {
+  Tiles.getWidth = function(blockDomNode) {
     var classString = $(blockDomNode).attr('class');
     var matches = classString.match(/span(\d+)/);
     var width = matches.pop();
@@ -192,4 +192,3 @@
   };
 
 }(jQuery));
-
