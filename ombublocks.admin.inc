@@ -152,7 +152,7 @@ function ombublock_add_form_add_submit($form, &$form_state) {
   // Save the weight for this bean.
   ombublocks_block_set_width('bean', $bean->delta, $form_state['values']['width'], $context->name);
 
-  $context->reactions['block']['blocks']['bean-' . $bean->delta] = array(
+  $context->reactions['ombublocks']['blocks']['bean-' . $bean->delta] = array(
     'module' => 'bean',
     'delta' => $bean->delta,
     'region' => $form_state['type_values']['region'],
@@ -234,9 +234,9 @@ function ombublocks_delete($module, $delta) {
       if (isset($_GET['destination'])) {
         $context = context_load('ombublocks-' . _ombublocks_normalize_path($_GET['destination']));
         if ($context) {
-          foreach($context->reactions['block']['blocks'] as $key => $value) {
+          foreach($context->reactions['ombublocks']['blocks'] as $key => $value) {
             if ($value['module'] == $module && $value['delta'] == $delta) {
-              unset($context->reactions['block']['blocks'][$key]);
+              unset($context->reactions['ombublocks']['blocks'][$key]);
             }
           }
           context_save($context);
@@ -254,9 +254,9 @@ function ombublocks_delete_submit($form, &$form_state) {
   $context = context_load($form['#context']);
   if ($context) {
     // Delete bean from context.
-    foreach($context->reactions['block']['blocks'] as $key => $value) {
+    foreach($context->reactions['ombublocks']['blocks'] as $key => $value) {
       if ($value['module'] == 'bean' && $value['delta'] == $form['#bean']->delta) {
-        unset($context->reactions['block']['blocks'][$key]);
+        unset($context->reactions['ombublocks']['blocks'][$key]);
       }
     }
     context_save($context);

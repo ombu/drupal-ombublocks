@@ -29,6 +29,7 @@ define('OMBUBLOCKS_DEFAULT_CONTEXT', 'ombublocks-default');
 /**
  * Hook Implementations
  */
+
 /**
  * Implements hook_init().
  */
@@ -168,6 +169,59 @@ function ombublocks_permission() {
       'title' => t('Add new ombublocks'),
     ),
   );
+}
+
+/**
+ * Implements hook_ctools_plugin_api().
+ */
+function ombublocks_ctools_plugin_api($module, $api) {
+  if ($module == 'context' && $api == 'plugins') {
+    return array('version' => 3);
+  }
+}
+
+/**
+ * Implements hook_context_plugins().
+ */
+function ombublocks_context_plugins() {
+  $plugins = array();
+  $plugins['ombublocks_context_reaction_block'] = array(
+    'handler' => array(
+      'path' => drupal_get_path('module', 'ombublocks') . '/plugins',
+      'file' => 'ombublocks_context_reaction_block.inc',
+      'class' => 'ombublocks_context_reaction_block',
+      'parent' => 'context_reaction_block',
+    ),
+  );
+  return $plugins;
+}
+
+/**
+ * Implements of hook_context_registry().
+ */
+function ombublocks_context_registry() {
+  $registry = array();
+
+  $registry['reactions'] = array(
+    'ombublocks' => array(
+      'title' => t('Ombublocks Blocks'),
+      'description' => 'This reaction enforces proper weights for added blocks.',
+      'plugin' => 'ombublocks_context_reaction_block',
+    ),
+  );
+  return $registry;
+}
+
+/**
+ * Implements hook_page_build().
+ */
+function ombublocks_page_build(&$page) {
+  if ($plugin = context_get_plugin('reaction', 'ombublocks')) {
+    // Make sure context_reaction_block properly rebuilds block list.
+    drupal_static_reset('context_reaction_block_list');
+
+    $plugin->execute($page);
+  }
 }
 
 /**
@@ -402,9 +456,9 @@ function ombublocks_entity_load($entities, $type) {
  */
 function ombublocks_bean_access($bean, $op, $account) {
   // Tie ombublock based beans visibility to menu access.
-  if ($bean && $op == 'view' && ($context = _ombublocks_get_active_context()) && isset($context->reactions['block']['blocks'])) {
+  if ($bean && $op == 'view' && ($context = _ombublocks_get_active_context()) && isset($context->reactions['ombublocks']['blocks'])) {
 
-    if (array_key_exists('bean-' . $bean->delta, $context->reactions['block']['blocks'])) {
+    if (array_key_exists('bean-' . $bean->delta, $context->reactions['ombublocks']['blocks'])) {
       $item = menu_get_item(current_path());
       return $item['access'] && current_path() != variable_get('site_403', FALSE) && user_access('view any ' . $bean->type . ' bean');
     }
@@ -416,25 +470,12 @@ function ombublocks_bean_access($bean, $op, $account) {
  */
 function ombublocks_block_view_alter(&$data, $block) {
   // Tie ombublock based block visibility to menu access.
-  if (($context = _ombublocks_get_active_context()) && isset($context->reactions['block']['blocks'])) {
-    if (array_key_exists($block->module . '-' . $block->delta, $context->reactions['block']['blocks'])) {
+  if (($context = _ombublocks_get_active_context()) && isset($context->reactions['ombublocks']['blocks'])) {
+    if (array_key_exists($block->module . '-' . $block->delta, $context->reactions['ombublocks']['blocks'])) {
       $item = menu_get_item();
       if (!$item['access']) {
         $data['content'] = '';
       }
-    }
-  }
-}
-
-/**
- * Implements hook_page_build().
- */
-function ombublocks_page_build(&$build) {
-  // Force ombublock context weight to take priority, if active.
-  $context = _ombublocks_get_active_context();
-  if ($context && $context->reactions['block']['blocks']) {
-    foreach ($context->reactions['block']['blocks'] as $id => $block) {
-      $build[$block['region']][$block['module'] . '_' . $block['delta']]['#weight'] = $block['weight'];
     }
   }
 }
@@ -650,7 +691,7 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
 
       // For now assume that $default_blocks is well structured.  We can add in
       // checking in the future.
-      $context->reactions['block']['blocks'] = $default_blocks;
+      $context->reactions['ombublocks']['blocks'] = $default_blocks;
       break;
 
     case OMBUBLOCKS_INHERIT_PARENT:
@@ -694,9 +735,9 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
   );
 
   // If context has been inherited, then duplicate bean blocks.
-  if ($inheritance_type != OMBUBLOCKS_INHERIT_NONE && isset($context->reactions['block'])) {
-    $blocks = $context->reactions['block']['blocks'];
-    $context->reactions['block']['blocks'] = array();
+  if ($inheritance_type != OMBUBLOCKS_INHERIT_NONE && isset($context->reactions['ombublocks'])) {
+    $blocks = $context->reactions['ombublocks']['blocks'];
+    $context->reactions['ombublocks']['blocks'] = array();
     foreach ($blocks as $id => $block) {
       if ($block['module'] == 'bean') {
         $bean = bean_load_delta($block['delta']);
@@ -705,17 +746,17 @@ function _ombublocks_create_path_context($path, $inheritance_type = OMBUBLOCKS_I
           $bean->delta = NULL;
           bean_save($bean);
           $block['delta'] = $bean->delta;
-          $context->reactions['block']['blocks']['bean-' . $bean->delta] = $block;
+          $context->reactions['ombublocks']['blocks']['bean-' . $bean->delta] = $block;
         }
       }
       else {
-        $context->reactions['block']['blocks'][$id] = $block;
+        $context->reactions['ombublocks']['blocks'][$id] = $block;
       }
     }
   }
 
   // Check if any of the blocks have widths set, and save for this context.
-  foreach ($context->reactions['block']['blocks'] as $id => $block) {
+  foreach ($context->reactions['ombublocks']['blocks'] as $id => $block) {
     if (isset($block['width'])) {
       ombublocks_block_set_width($block['module'], $block['delta'], $block['width'], $context->name);
     }
@@ -805,8 +846,8 @@ function _ombublocks_save_weights() {
 
     // If system main exists in incoming blocks, make sure that it exists in the
     // context as well, otherwise weights won't save properly.
-    if (in_array('system-main', $params->blocks) && !array_key_exists('system-main', $context->reactions['block']['blocks'])) {
-      $context->reactions['block']['blocks']['system_main'] = array(
+    if (in_array('system-main', $params->blocks) && !array_key_exists('system-main', $context->reactions['ombublocks']['blocks'])) {
+      $context->reactions['ombublocks']['blocks']['system_main'] = array(
         'module' => 'system',
         'delta' => 'main',
         'region' => $params->region,
@@ -814,7 +855,7 @@ function _ombublocks_save_weights() {
       );
     }
 
-    foreach ($context->reactions['block']['blocks'] as $key => &$value) {
+    foreach ($context->reactions['ombublocks']['blocks'] as $key => &$value) {
       if ($value['region'] !== str_replace('-', '_', $params->region)) {
         continue;
       }
