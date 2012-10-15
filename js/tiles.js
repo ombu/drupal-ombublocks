@@ -11,6 +11,21 @@
         block = new Tiles(e.target);
         block.setDraggable();
       });
+
+      // Add widths
+      $('.contextual-links .block-set-width', context).once('block-width', function() {
+        $('a', this).click(function(e) { e.preventDefault(); });
+        var out = '<ul>';
+        for (i = 1; i <= 12; i++) {
+          out += '<li><a class="set-width" href="#" data-step="' + i + '">' + (i / 12 * 100).toFixed(0) + '%</a></li>';
+        }
+        $(this).append(out);
+        $('a.set-width', this).click(function (e) {
+          var target = $(e.target);
+          block = new Tiles(target);
+          block.setWidth(target.attr('data-step'));
+        });
+      });
     }
   };
 
@@ -182,6 +197,23 @@
 
     region.append(curr_row);
     return region;
+  };
+
+  Tiles.prototype.setWidth = function(width) {
+    this.removeRows(this.region);
+    this.domNode[0].className = this.domNode[0].className.replace(/\bspan\d+/g, '');
+    this.domNode.addClass('span' + width);
+    this.addRows(this.region);
+
+    $.ajax({
+      type: 'POST',
+      url: '/admin/tiles-save-width',
+      data: JSON.stringify({ width: width, module: this.domNode.attr('data-module'), delta: this.domNode.attr('data-delta'), active_context: Drupal.settings.tiles.active_context }),
+      success: $.proxy(this, 'saveHandleSuccess'),
+      error: this.saveHandleError,
+      contentType: 'application/json',
+      dataType: 'json'
+    });
   };
 
   Tiles.getWidth = function(blockDomNode) {

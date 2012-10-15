@@ -77,9 +77,16 @@ function tiles_menu() {
     'file' => 'tiles.admin.inc',
   );
   $items['admin/tiles-save-weights'] = array(
-    'title' => 'View tiles',
+    'title' => 'Save tile weights',
     'page callback' => '_tiles_save_weights',
     'access arguments' => array('arrange tiles'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/tiles-save-width'] = array(
+    'title' => 'Save tile width',
+    'page callback' => '_tiles_save_width',
+    'access arguments' => array('arrange tiles'),
+    'type' => MENU_CALLBACK,
   );
   return $items;
 }
@@ -611,6 +618,7 @@ function tiles_block_set_width($module, $delta, $width, $context_id = NULL) {
  *   The width of the given block.
  */
 function tiles_block_get_width($module, $delta, $context_id = NULL) {
+  // @todo: implement caching
   if (is_null($context_id)) {
     $context = _tiles_get_active_context();
     if ($context) {
@@ -837,11 +845,11 @@ function _tiles_has_block_access() {
 }
 
 /**
- * Save the weights of blocks to the current page's context.
+ * AJAX Callback: Save the weights of blocks to the current page's context.
  */
 function _tiles_save_weights() {
   $params = json_decode(file_get_contents('php://input'));
-  if ($params->active_context) {
+  if (!empty($params->active_context)) {
     $context = context_load($params->active_context);
 
     // If system main exists in incoming blocks, make sure that it exists in the
@@ -865,6 +873,16 @@ function _tiles_save_weights() {
       }
     }
     return drupal_json_output(context_save($context));
+  }
+}
+
+/**
+ * AJAX Callback: Save the width of a specific block.
+ */
+function _tiles_save_width() {
+  $params = json_decode(file_get_contents('php://input'));
+  if (!empty($params->active_context)) {
+    tiles_block_set_width($params->module, $params->delta, $params->width, $params->active_context);
   }
 }
 
