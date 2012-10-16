@@ -874,7 +874,14 @@ function _ombublocks_save_weights() {
  * @todo: this should be hookable.
  */
 function _ombublocks_get_regions() {
-  return system_region_list(variable_get('theme_default', NULL));
+  $regions = module_invoke_all('ombublocks_regions');
+
+  // If no module defines regions, default to showing all regions.
+  if (!$regions) {
+    $regions = system_region_list(variable_get('theme_default', NULL));
+  }
+
+  return $regions;
 }
 
 /**
