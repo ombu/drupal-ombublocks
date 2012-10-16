@@ -263,7 +263,9 @@
       alert('This tile is already full width.');
       return false;
     }
+    this.removeRows(this.region);
     this.setWidth(currentWidth + 1);
+    this.addRows(this.region);
     return false;
   };
 
@@ -273,7 +275,9 @@
       alert('This tile is already at the minimum width.');
       return false;
     }
+    this.removeRows(this.region);
     this.setWidth(currentWidth - 1);
+    this.addRows(this.region);
     return false;
   };
 
