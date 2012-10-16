@@ -12,18 +12,16 @@
         block.setDraggable();
       });
 
-      // Add widths
-      $('.contextual-links .block-set-width', context).once('block-width', function() {
-        $('a', this).click(function(e) { e.preventDefault(); });
-        var out = '<ul>';
-        for (i = 1; i <= 12; i++) {
-          out += '<li><a class="set-width" href="#" data-step="' + i + '">' + (i / 12 * 100).toFixed(0) + '%</a></li>';
-        }
-        $(this).append(out);
-        $('a.set-width', this).click(function (e) {
-          var target = $(e.target);
-          block = new Tiles(target);
-          block.setWidth(target.attr('data-step'));
+      $('.contextual-links .block-set-width a', context).once('block-width', function() {
+        $(this).click(function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          $(e.target).blur();
+          if ($(e.target).closest(Tiles.prototype.selector.block).hasClass('dragging')) {
+            return;
+          }
+          block = new Tiles(e.target);
+          block.setResizable();
         });
       });
     }
@@ -74,7 +72,7 @@
     overlayContent += '<button class="move-right">Right</button>';
     overlayContent += '<button class="save">Save</button>';
     overlayContent += '<span class="cancel">Cancel</span>';
-    this.domNode.prepend('<div class="drag-overlay"><div class="inner"><div class="control-wrapper">' + overlayContent + '</div></div></div>');
+    this.domNode.prepend('<div class="tile-overlay"><div class="inner"><div class="control-wrapper">' + overlayContent + '</div></div></div>');
     $('.move-left', this.domNode).click($.proxy(this,'moveLeft'));
     $('.move-right', this.domNode).click($.proxy(this,'moveRight'));
     $('.cancel', this.domNode).click($.proxy(this, 'moveCancel'));
@@ -87,7 +85,7 @@
    * remove the parent to avoid memory leaks (some libs handle this)
    */
   Tiles.prototype.removeMoveOverlay = function() {
-    $('.drag-overlay', this.domNode).remove();
+    $('.tile-overlay', this.domNode).remove();
     return this;
   };
 
@@ -160,6 +158,7 @@
 
   Tiles.prototype.saveHandleSuccess = function() {
     this.unsetDraggable();
+    this.unsetResizable();
   };
 
   Tiles.prototype.saveHandleError = function() {
@@ -200,21 +199,102 @@
   };
 
   Tiles.prototype.setWidth = function(width) {
-    this.removeRows(this.region);
     this.domNode[0].className = this.domNode[0].className.replace(/\bspan\d+/g, '');
     this.domNode.addClass('span' + width);
-    this.addRows(this.region);
+  };
 
+  Tiles.prototype.saveWidth = function(e) {
     $.ajax({
       type: 'POST',
       url: '/admin/tiles-save-width',
-      data: JSON.stringify({ width: width, module: this.domNode.attr('data-module'), delta: this.domNode.attr('data-delta'), active_context: Drupal.settings.tiles.active_context }),
+      data: JSON.stringify({
+        width: this.getWidth(),
+        module: this.domNode.attr('data-module'),
+        delta: this.domNode.attr('data-delta'),
+        active_context: Drupal.settings.tiles.active_context
+      }),
       success: $.proxy(this, 'saveHandleSuccess'),
       error: this.saveHandleError,
       contentType: 'application/json',
       dataType: 'json'
     });
+    return false;
   };
+
+  Tiles.prototype.setResizable = function() {
+    this.domNode.addClass('resizing');
+    $('body').addClass('resizing');
+    this.addResizeOverlay();
+    this.startWidth = this.getWidth();
+    return this;
+  };
+
+  Tiles.prototype.unsetResizable = function() {
+    this.domNode.removeClass('resizing');
+    $('body').removeClass('resizing');
+    this.removeResizeOverlay();
+    return this;
+  };
+
+  /**
+   * TODO Use jQuery template
+   */
+  Tiles.prototype.addResizeOverlay = function() {
+    // Prevent irresponsible js plugins (twitter I'm looking at you) from using
+    // document.write after a block is moved. Using document.write after a page
+    // load overwrites the whole dom.
+    document.write = function() {};
+
+    var overlayContent = '<button class="width-minus">-</button>';
+    overlayContent += '<button class="width-plus">+</button>';
+    overlayContent += '<button class="save">Save</button>';
+    overlayContent += '<span class="cancel">Cancel</span>';
+    this.domNode.prepend('<div class="tile-overlay"><div class="inner"><div class="control-wrapper">' + overlayContent + '</div></div></div>');
+    $('.width-plus', this.domNode).click($.proxy(this,'widthPlus'));
+    $('.width-minus', this.domNode).click($.proxy(this,'widthMinus'));
+    $('.cancel', this.domNode).click($.proxy(this, 'resizeCancel'));
+    $('.save', this.domNode).click($.proxy(this, 'saveWidth'));
+    return this;
+  };
+
+  Tiles.prototype.widthPlus = function(e) {
+    var currentWidth = this.getWidth();
+    if (currentWidth + 1 > 12) {
+      alert('This tile is already full width.');
+      return false;
+    }
+    this.setWidth(currentWidth + 1);
+    return false;
+  };
+
+  Tiles.prototype.widthMinus = function(e) {
+    var currentWidth = this.getWidth();
+    if (currentWidth - 1 < 1) {
+      alert('This tile is already at the minimum width.');
+      return false;
+    }
+    this.setWidth(currentWidth - 1);
+    return false;
+  };
+
+  /**
+   * TODO Check if we need to unbind events of children elements before we
+   * remove the parent to avoid memory leaks (some libs handle this)
+   */
+  Tiles.prototype.removeResizeOverlay = function() {
+    $('.tile-overlay', this.domNode).remove();
+    return this;
+  };
+
+  Tiles.prototype.resizeCancel = function(e) {
+    this.setWidth(this.startWidth);
+    this.startWidth = undefined;
+    this.unsetResizable();
+  };
+
+  Tiles.prototype.getWidth = function() {
+    return Tiles.getWidth(this.domNode);
+  }
 
   Tiles.getWidth = function(blockDomNode) {
     var classString = $(blockDomNode).attr('class');
