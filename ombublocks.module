@@ -819,7 +819,7 @@ function _ombublocks_has_block_access() {
     }
     // Otherwise default to taxonomy access.
     else {
-      return user_access('edit terms in ' . $term->vid);
+      return user_access('administer taxonomy') || user_access('edit terms in ' . $term->vid);
     }
   }
 
