@@ -262,18 +262,3 @@ function tiles_delete_submit($form, &$form_state) {
     context_save($context);
   }
 }
-
-/**
- * Returns a themed link list with tiles
- * @param string $region
- *      Optional. Limit list to a given region
- * @return string
- */
-function tiles_get_link_list($region = NULL) {
-  $links = array();
-  foreach (tiles_get($region) as $source => $title) {
-    $links['links'][$source]['title'] = $title;
-    $links['links'][$source]['href'] = '#';
-  }
-  return theme('links', $links);
-}

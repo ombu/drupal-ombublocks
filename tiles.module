@@ -31,12 +31,6 @@ define('TILES_DEFAULT_CONTEXT', 'tiles-default');
  */
 
 /**
- * Implements hook_init().
- */
-function tiles_init() {
-}
-
-/**
  * Implements hook_menu().
  */
 function tiles_menu() {
@@ -70,18 +64,6 @@ function tiles_menu() {
     'access arguments' => array('add tiles'),
     'file' => 'tiles.admin.inc',
   );
-  $items['admin/tiles/list'] = array(
-    'title' => 'View tiles',
-    'page callback' => 'tiles_get_link_list',
-    'access arguments' => array('add tiles'),
-    'file' => 'tiles.admin.inc',
-  );
-  $items['admin/tiles-save-weights'] = array(
-    'title' => 'Save tile weights',
-    'page callback' => '_tiles_save_weights',
-    'access arguments' => array('arrange tiles'),
-    'type' => MENU_CALLBACK,
-  );
   $items['admin/tiles-save-width'] = array(
     'title' => 'Save tile width',
     'page callback' => '_tiles_save_width',
@@ -107,9 +89,6 @@ function tiles_menu_alter(&$items) {
   $items['admin/structure/block/manage/%/%/delete']['access arguments'] = array(4, 5);
   $items['admin/structure/block/manage/%/%/delete']['file'] = 'tiles.admin.inc';
   $items['admin/structure/block/manage/%/%/delete']['module'] = 'tiles';
-
-  // Remove block configure context.
-  // unset($items['admin/structure/block/manage/%/%/configure']['context']);
 }
 
 /**
@@ -117,7 +96,7 @@ function tiles_menu_alter(&$items) {
  */
 function tiles_menu_local_tasks_alter(&$data, $router_item, $root_path) {
   // Add "Add a Block" link to all pages that aren't admin paths.
-  if (user_access('add tiles') && !path_is_admin(current_path())) {
+  if (user_access('add tiles') && _tiles_has_block_access() && !path_is_admin(current_path())) {
     if (!$data['tabs']) {
       $data['tabs'][0] = array(
         'count' => 0,
@@ -298,6 +277,7 @@ function tiles_tiles_info() {
  */
 function tiles_contextual_links_view_alter(&$element, $items) {
   // Remove configure block link for all blocks.
+  // @todo: make this a setting?
   if (isset($element['#element']['#block'])) {
     unset($element['#links']['block-configure']);
 
