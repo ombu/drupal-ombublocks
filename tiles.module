@@ -12,19 +12,9 @@
  */
 
 /**
- * Define the types of context inheritance to provide.
- */
-define('TILES_INHERIT_NONE', 0);
-define('TILES_INHERIT_DEFAULT', 1);
-define('TILES_INHERIT_PARENT', 2);
-
-/**
  * Define the number of available steps for setting the width of a block.
  */
 define('TILES_WIDTH_STEPS', 12);
-
-// @todo: this should be an admin page and a setting.
-define('TILES_DEFAULT_CONTEXT', 'tiles-default');
 
 /**
  * Hook Implementations
@@ -317,64 +307,12 @@ function tiles_admin_paths() {
 }
 
 /**
- * Implements hook_form_BASE_FORM_ID_alter().
- */
-function tiles_form_node_form_alter(&$form, $form_state) {
-  // Add option to select custom contexts for new pages.
-  // @todo: should add an option to limit by node type.
-  if (!$form['nid']['#value'] && !in_array($form['type']['#value'], array('blog_post'))) {
-    $form['tiles'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Initial page layout'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#access' => user_access('add tiles'),
-      '#group' => 'additional_settings',
-      '#tree' => FALSE,
-      '#attached' => array(
-        'js' => array(drupal_get_path('module', 'tiles') . '/js/tiles.admin.js'),
-      ),
-      '#attributes' => array(
-        'class' => array('tiles-node-settings-form'),
-      ),
-    );
-
-    $description = <<<EOD
-    <p>
-    Select the block layout to use for this new page.  The available options are:
-    </p>
-    <dl>
-      <dt><strong>New blank layout</strong></dt>
-      <dd>A blank layout will be created for this page that contains no blocks.</dd>
-      <dt><strong>Default layout</strong></dt>
-      <dd>This page will inherit the block layout from the default layout page.</dd>
-      <dt><strong>Inherit from menu parent</strong></dt>
-      <dd>This page will inherit the block layout from the parent menu item.  <em>This will only be available if the "Provide a menu link" option has been set in the "Menu settings" tab</em>.</dd>
-    </dl>
-EOD;
-
-    $form['tiles']['tiles_layout'] = array(
-      '#title' => t('Layout'),
-      '#type' => 'select',
-      '#options' => array(
-        TILES_INHERIT_NONE => 'New blank layout',
-        TILES_INHERIT_DEFAULT => 'Default layout',
-        TILES_INHERIT_PARENT => 'Inherited from menu parent',
-      ),
-      '#description' => $description,
-      '#default_value' => TILES_INHERIT_DEFAULT,
-    );
-  }
-}
-
-/**
  * Implements hook_node_insert().
  */
 function tiles_node_insert($node) {
   // Create a new context for this node.
   _tiles_create_path_context(
     'node/' . $node->nid,
-    isset($node->tiles_layout) ? $node->tiles_layout : NULL,
     isset($node->tiles) ? $node->tiles : array()
   );
 }
@@ -635,11 +573,6 @@ function tiles_block_get_bid($module, $delta, $theme = NULL) {
  *
  * @param string $path
  *   The internal path to create a context for.
- * @param string $inheritance_type
- *   The type of context inheritance to do.  The available options are:
- *     - TILES_INHERIT_NONE => New blank layout
- *     - TILES_INHERIT_DEFAULT => Default layout
- *     - TILES_INHERIT_PARENT => Inherited from menu parent
  * @param array $default_blocks
  *   Array of blocks to add to the node context.  Only applies if
  *   $inheritance_type is TILES_INHERIT_NONE.
@@ -647,66 +580,30 @@ function tiles_block_get_bid($module, $delta, $theme = NULL) {
  * @return $context
  *   The fully created context object.
  */
-function _tiles_create_path_context($path, $inheritance_type = TILES_INHERIT_NONE, $default_blocks = array()) {
+function _tiles_create_path_context($path, $default_blocks = array()) {
   // Check to see if context already exists.
   if ($context = context_load('tiles-' . _tiles_normalize_path($path))) {
     return $context;
   }
 
-  // Create a new context object based on inheritance type.
-  switch ($inheritance_type) {
-    case TILES_INHERIT_DEFAULT:
-      $context = context_load(TILES_DEFAULT_CONTEXT);
-      // Only use default context if it exists, otherwise use new context.
-      if ($context) {
-        break;
-      }
+  // Create a new context.
+  $context = new stdClass();
+  $context->tag = 'tiles';
 
-    case TILES_INHERIT_NONE:
-      $context = new stdClass();
-      $context->tag = 'tiles';
-
-      // Make sure system_main is always in the default block array.  That way
-      // the main content block can be orderable within this context (ftw!).
-      if (!in_array('system-main', $default_blocks)) {
-        $default_blocks['system-main'] = array(
-          'module' => 'system',
-          'delta' => 'main',
-          'region' => 'content',
-          'weight' => '0',
-        );
-      }
-
-      // For now assume that $default_blocks is well structured.  We can add in
-      // checking in the future.
-      $context->reactions['tiles']['blocks'] = $default_blocks;
-      break;
-
-    case TILES_INHERIT_PARENT:
-      // Try and find the menu parent.
-      $mlid = db_query_range("SELECT mlid FROM {menu_links} WHERE link_path = :path AND menu_name = :menu_name AND module = 'menu' ORDER BY mlid ASC", 0, 1, array(
-        ':path' => $path,
-         // @todo: this defaults to main-menu, should be more flexible and check
-         // the menu that the path was added to.
-        ':menu_name' => 'main-menu',
-      ))->fetchField();
-
-      $context = FALSE;
-      if ($mlid) {
-        $item = menu_link_load($mlid);
-        $parent = _menu_link_find_parent($item);
-        if ($parent) {
-          $context = context_load('tiles-' . _tiles_normalize_path($parent['link_path']));
-        }
-      }
-
-      // Default to creating a new context, if parent context doesn't exist.
-      if (!$context) {
-        $context = new stdClass();
-        $context->tag = 'tiles';
-      }
-      break;
+  // Make sure system_main is always in the default block array.  That way
+  // the main content block can be orderable within this context (ftw!).
+  if (!in_array('system-main', $default_blocks)) {
+    $default_blocks['system-main'] = array(
+      'module' => 'system',
+      'delta' => 'main',
+      'region' => 'content',
+      'weight' => '0',
+    );
   }
+
+  // For now assume that $default_blocks is well structured.  We can add in
+  // checking in the future.
+  $context->reactions['tiles']['blocks'] = $default_blocks;
 
   // Normalize path and set as context name.
   $path_name = _tiles_normalize_path($path);
@@ -721,27 +618,6 @@ function _tiles_create_path_context($path, $inheritance_type = TILES_INHERIT_NON
       ),
     ),
   );
-
-  // If context has been inherited, then duplicate bean blocks.
-  if ($inheritance_type != TILES_INHERIT_NONE && isset($context->reactions['tiles'])) {
-    $blocks = $context->reactions['tiles']['blocks'];
-    $context->reactions['tiles']['blocks'] = array();
-    foreach ($blocks as $id => $block) {
-      if ($block['module'] == 'bean') {
-        $bean = bean_load_delta($block['delta']);
-        if ($bean) {
-          $bean->bid = NULL;
-          $bean->delta = NULL;
-          bean_save($bean);
-          $block['delta'] = $bean->delta;
-          $context->reactions['tiles']['blocks']['bean-' . $bean->delta] = $block;
-        }
-      }
-      else {
-        $context->reactions['tiles']['blocks'][$id] = $block;
-      }
-    }
-  }
 
   // Check if any of the blocks have widths set, and save for this context.
   foreach ($context->reactions['tiles']['blocks'] as $id => $block) {
