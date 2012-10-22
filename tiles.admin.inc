@@ -54,11 +54,12 @@ function tiles_add_form($form, &$form_state, $context_name = '') {
     $form['bean_form']['label']['#default_value'] = 'ombucleanup-tempkey';
 
     // Add in width form element for beans.
+    $steps = tiles_get_steps()
     $form['width'] = array(
       '#type' => 'select',
       '#title' => t('Width'),
-      '#options' => _tiles_width_step_options(),
-      '#default_value' => TILES_WIDTH_STEPS,
+      '#options' => $steps,
+      '#default_value' => array_pop($steps),
       '#description' => t('Select the width of this block.'),
     );
 
@@ -184,11 +185,12 @@ function tiles_set_width($form, &$form_state, $module, $delta) {
 
   $width = tiles_block_get_width($module, $delta, $form['#context']);
 
+  $steps = tiles_get_steps();
   $form['width'] = array(
     '#type' => 'select',
     '#title' => t('Width'),
-    '#options' => _tiles_width_step_options(),
-    '#default_value' => $width ? $width : TILES_WIDTH_STEPS,
+    '#options' => tiles_get_steps(),
+    '#default_value' => $width ? $width : array_pop($steps),
 
   );
 

@@ -401,11 +401,12 @@ function tiles_form_bean_form_alter(&$form, $form_state, $form_id) {
   // Add in width selector to bean forms.  This only covers edit bean forms,
   // since adding a new bean form is coming directly through
   // tiles_add_form().
+  $steps = tiles_get_steps();
   $form['width'] = array(
     '#type' => 'select',
     '#title' => t('Width'),
-    '#options' => _tiles_width_step_options(),
-    '#default_value' => !empty($form['bean']['#value']->width) ? $form['bean']['#value']->width : TILES_WIDTH_STEPS,
+    '#options' => $steps,
+    '#default_value' => !empty($form['bean']['#value']->width) ? $form['bean']['#value']->width : array_pop($steps),
     '#description' => t('Select the width of this block.'),
   );
   $form['#submit'][] = 'tiles_form_bean_form_save_weight';
@@ -436,7 +437,6 @@ function tiles_entity_load($entities, $type) {
     }
   }
 }
-
 
 /**
  * Implements hook_bean_access().
@@ -624,6 +624,26 @@ function tiles_block_get_bid($module, $delta, $theme = NULL) {
     ':delta' => $delta,
     ':theme' => $theme ? $theme : variable_get('theme_default', ''),
   ))->fetchField();
+}
+
+/**
+ * Gets the step count for the current theme.
+ */
+function tiles_get_steps($theme = NULL) {
+  // Default to default frontend theme.
+  if (!$theme) {
+    $theme = variable_get('theme_default', NULL);
+  }
+  $steps = theme_get_setting('tiles_steps', $theme);
+
+  // If no theme has defined steps, default to bootstrap steps.
+  if (!$steps) {
+    for ($i = 1; $i <= TILES_WIDTH_STEPS; $i++) {
+      $steps[$i] = number_format($i / TILES_WIDTH_STEPS * 100, 0) . '%';
+    }
+  }
+
+  return $steps;
 }
 
 /**
@@ -892,17 +912,4 @@ function _tiles_js_init() {
 
     $initialized = TRUE;
   }
-}
-
-/**
- * Returns options for selecting width steps.
- */
-function _tiles_width_step_options() {
-  $steps = TILES_WIDTH_STEPS;
-
-  $options = array();
-  for ($i = 1; $i <= $steps; $i++) {
-    $options[$i] = number_format($i / $steps * 100, 0) . '%';
-  }
-  return $options;
 }
