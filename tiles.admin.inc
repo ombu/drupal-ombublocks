@@ -49,12 +49,12 @@ function tiles_add_form($form, &$form_state, $context_name = '') {
     $form['bean_form'] = bean_form(array(), $form_state, $bean, $form_state['type_values']['block_type']);
     unset($form['bean_form']['actions']);
 
-    // Hide the label
+    // Hide the label.
     $form['bean_form']['label']['#access'] = FALSE;
     $form['bean_form']['label']['#default_value'] = 'ombucleanup-tempkey';
 
     // Add in width form element for beans.
-    $steps = tiles_get_steps()
+    $steps = tiles_get_steps();
     $form['width'] = array(
       '#type' => 'select',
       '#title' => t('Width'),
