@@ -148,6 +148,23 @@ function tiles_permission() {
 }
 
 /**
+ * Implements hook_theme().
+ */
+function tiles_theme() {
+  return array(
+    'tiles_region' => array(
+      'render element' => 'element',
+    ),
+    'tiles_row' => array(
+      'render element' => 'element',
+    ),
+    'tiles_tile' => array(
+      'render element' => 'element',
+    ),
+  );
+}
+
+/**
  * Implements hook_ctools_plugin_api().
  */
 function tiles_ctools_plugin_api($module, $api) {
@@ -583,6 +600,35 @@ function tiles_get_steps($theme = NULL) {
 
   return $steps;
 }
+
+/**
+ * Theme implementations.
+ */
+
+/**
+ * Default implementation of theme_tiles_region().
+ */
+function theme_tiles_region($element) {
+  $element = &$variables['element'];
+  return '<div class="tiles-region">' . $element['#children'] . '</div>';
+}
+
+/**
+ * Default implementation of theme_tiles_row().
+ */
+function theme_tiles_row($element) {
+  $element = &$variables['element'];
+  return '<div class="tiles-row">' . $element['#children'] . '</div>';
+}
+
+/**
+ * Default implementation of theme_tiles_tile().
+ */
+function theme_tiles_tile($element) {
+  $element = &$variables['element'];
+  return '<div class="tiles-tile">' . $element['#children'] . '</div>';
+}
+
 
 /**
  * Private functions
