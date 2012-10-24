@@ -54,6 +54,14 @@ function tiles_menu() {
     'access arguments' => array('add tiles'),
     'file' => 'tiles.admin.inc',
   );
+
+  $items['admin/tiles-save-weights'] = array(
+    'title' => 'Save tile weight',
+    'page callback' => '_tiles_save_weights',
+    'access arguments' => array('arrange tiles'),
+    'type' => MENU_CALLBACK,
+  );
+
   $items['admin/tiles-save-width'] = array(
     'title' => 'Save tile width',
     'page callback' => '_tiles_save_width',
