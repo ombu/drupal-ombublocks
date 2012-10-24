@@ -218,6 +218,57 @@ function tiles_page_build(&$page) {
 }
 
 /**
+ * Implements hook_page_alter().
+ *
+ * Wraps blocks that belong to page regions in tile specific wrappers.
+ */
+function tiles_page_alter(&$page) {
+  $max_cols_per_row = $default_width = tiles_get_max_step();
+  foreach (element_children($page) as $region_key) {
+    // Make sure blocks are properly sorted.
+    unset($page[$region_key]['#sorted']);
+    $region_children = element_children($page[$region_key], TRUE);
+
+    $col_count = $row = 0;
+    $row_key = 'row_' . $row;
+
+    $page[$region_key]['#original'] = array();
+    $page[$region_key]['rows'] = array('#theme_wrappers' => array('tiles_region'));
+    $page[$region_key]['rows'][$row_key] = array('#theme_wrappers' => array('tiles_row'));
+
+    foreach ($region_children as $delta) {
+
+      // Only operate on blocks.
+      if (!array_key_exists('#block', $page[$region_key][$delta])) {
+        continue;
+      }
+
+      $block = $page[$region_key][$delta]['#block'];
+      $width = tiles_get_block_width($block->module, $block->delta);
+
+      if (($col_count + $width) <= $max_cols_per_row) {
+        $col_count += $width;
+      }
+      else {
+        $col_count = $width;
+        $row_key = 'row_' . ++$row;
+        $page[$region_key]['rows'][$row_key] = array('#theme_wrappers' => array('tiles_row'));
+      }
+
+      // Add block to current row.
+      $page[$region_key]['rows'][$row_key][$delta] = $page[$region_key][$delta];
+      $page[$region_key]['rows'][$row_key][$delta]['#theme_wrappers'][] = 'tiles_tile';
+
+      // Stash the block in the #original key.
+      $page[$region_key]['#original'][$delta] = $page[$region_key][$delta];
+
+      // Remove block from old position in region.
+      unset($page[$region_key][$delta]);
+    }
+  }
+}
+
+/**
  * Implements hook_preprocess_block().
  */
 function tiles_preprocess_block(&$variables) {
@@ -361,7 +412,7 @@ function tiles_form_bean_form_alter(&$form, $form_state, $form_id) {
     '#type' => 'select',
     '#title' => t('Width'),
     '#options' => $steps,
-    '#default_value' => !empty($form['bean']['#value']->width) ? $form['bean']['#value']->width : array_pop($steps),
+    '#default_value' => !empty($form['bean']['#value']->width) ? $form['bean']['#value']->width : tiles_get_max_step(),
     '#description' => t('Select the width of this block.'),
   );
   $form['#submit'][] = 'tiles_form_bean_form_save_weight';
@@ -454,7 +505,7 @@ function tiles_get() {
 }
 
 /**
- * Returns a list of tile types
+ * Returns a list of tile types.
  */
 function tiles_get_types() {
   $_types = bean_get_types();
@@ -548,6 +599,42 @@ function tiles_block_set_width($module, $delta, $width, $context_id = NULL) {
 }
 
 /**
+ * Returns a block's width
+ *
+ * The block's width is determined by:
+ * - Checking for values from hook_block_widths().
+ * - Checking if it is an ombublock that has a width value. (overwrites
+ *   previous)
+ * - Setting to default if none of the above produced a width.
+ *
+ * @return int $width
+ */
+function tiles_get_block_width($module, $delta) {
+  $default_width = 12;
+  $width = FALSE;
+  $block_widths = module_invoke_all('block_widths');
+
+  // Get width from hook_block_widths().
+  if (isset($block_widths[$module][$delta])) {
+    $width = (int) $block_widths[$module][$delta];
+  }
+
+  // Get width from tiles
+  if (function_exists('tiles_is_tile') && tiles_is_tile($module, $delta)) {
+    $tile_width = tiles_block_get_width($module, $delta);
+    if ($tile_width) {
+      $width = $tile_width;
+    }
+  }
+
+  if ($width === FALSE) {
+    $width = $default_width;
+  }
+
+  return $width;
+}
+
+/**
  * Gets the width for a block.
  *
  * @param string $module
@@ -611,31 +698,41 @@ function tiles_get_steps($theme = NULL) {
 }
 
 /**
+ * Get the last (max) column step.
+ */
+function tiles_get_max_step() {
+  $steps = tiles_get_steps();
+  $steps = array_keys($steps);
+  return array_pop($steps);
+}
+
+/**
+ * Gets the max step allowed for the current theme.
+ */
+
+/**
  * Theme implementations.
  */
 
 /**
  * Default implementation of theme_tiles_region().
  */
-function theme_tiles_region($element) {
-  $element = &$variables['element'];
-  return '<div class="tiles-region">' . $element['#children'] . '</div>';
+function theme_tiles_region($variables) {
+  return '<div class="tiles-region">' . $variables['element']['#children'] . '</div>';
 }
 
 /**
  * Default implementation of theme_tiles_row().
  */
-function theme_tiles_row($element) {
-  $element = &$variables['element'];
-  return '<div class="tiles-row">' . $element['#children'] . '</div>';
+function theme_tiles_row($variables) {
+  return '<div class="tiles-row">' . $variables['element']['#children'] . '</div>';
 }
 
 /**
  * Default implementation of theme_tiles_tile().
  */
-function theme_tiles_tile($element) {
-  $element = &$variables['element'];
-  return '<div class="tiles-tile">' . $element['#children'] . '</div>';
+function theme_tiles_tile($variables) {
+  return '<div class="tiles-tile">' . $variables['element']['#children'] . '</div>';
 }
 
 
@@ -904,7 +1001,10 @@ function tiles_render_region($page) {
     $page[$block->module . '_' . $block->delta]['width'] = $block->width;
   }
 
+  $page[$params->region] = $page;
+
   // Rebuild blocks into tile rows.
+  tiles_wrap_page($page);
 
   print drupal_render($page);
 }

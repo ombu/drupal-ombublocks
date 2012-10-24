@@ -59,7 +59,7 @@ function tiles_add_form($form, &$form_state, $context_name = '') {
       '#type' => 'select',
       '#title' => t('Width'),
       '#options' => $steps,
-      '#default_value' => array_pop($steps),
+      '#default_value' => tiles_get_max_step(),
       '#description' => t('Select the width of this block.'),
     );
 
@@ -190,7 +190,7 @@ function tiles_set_width($form, &$form_state, $module, $delta) {
     '#type' => 'select',
     '#title' => t('Width'),
     '#options' => tiles_get_steps(),
-    '#default_value' => $width ? $width : array_pop($steps),
+    '#default_value' => $width ? $width : tiles_get_max_step(),
 
   );
 
