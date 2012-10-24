@@ -594,7 +594,7 @@ function tiles_block_set_width($module, $delta, $width, $context_id = NULL) {
 }
 
 /**
- * Returns a block's width
+ * Returns a block's width.
  *
  * The block's width is determined by:
  * - Checking for values from hook_block_widths().
@@ -605,8 +605,8 @@ function tiles_block_set_width($module, $delta, $width, $context_id = NULL) {
  * @return int $width
  */
 function tiles_get_block_width($module, $delta) {
-  $default_width = 12;
-  $width = FALSE;
+  // Default to max width.
+  $width = tiles_get_max_step();
   $block_widths = module_invoke_all('block_widths');
 
   // Get width from hook_block_widths().
@@ -614,16 +614,12 @@ function tiles_get_block_width($module, $delta) {
     $width = (int) $block_widths[$module][$delta];
   }
 
-  // Get width from tiles
-  if (function_exists('tiles_is_tile') && tiles_is_tile($module, $delta)) {
+  // Get width from tiles.
+  if (tiles_is_tile($module, $delta)) {
     $tile_width = tiles_block_get_width($module, $delta);
     if ($tile_width) {
       $width = $tile_width;
     }
-  }
-
-  if ($width === FALSE) {
-    $width = $default_width;
   }
 
   return $width;
@@ -987,19 +983,21 @@ function tiles_render_region($page) {
   tiles_prerender_page($page);
 
   // Focus on a specific region.
-  $page = $page[$params->region];
+  $region = $page[$params->region];
 
   // Pull out old build array before blocks have been added to rows.
-  $page = $page['#original'];
+  $region = $region['#original'];
   foreach ($params->blocks as $block) {
-    $page[$block->module . '_' . $block->delta]['weight'] = $block->weight;
-    $page[$block->module . '_' . $block->delta]['width'] = $block->width;
+    $region[$block->module . '_' . $block->delta]['weight'] = $block->weight;
+    $region[$block->module . '_' . $block->delta]['width'] = $block->width;
   }
 
-  $page[$params->region] = $page;
+  $page = array(
+    $params->region => $region,
+  );
 
   // Rebuild blocks into tile rows.
-  tiles_wrap_page($page);
+  tiles_page_alter($page);
 
   print drupal_render($page);
 }
