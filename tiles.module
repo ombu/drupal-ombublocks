@@ -286,11 +286,6 @@ function tiles_preprocess_block(&$variables) {
     $variables['attributes_array']['data-module'] = $variables['block']->module;
     $variables['attributes_array']['data-delta'] = $variables['block']->delta;
   }
-
-  // Hide contextual links for all blocks except tiles.
-  if (!tiles_is_tile($variables['block']->module, $variables['block']->delta) || !_tiles_has_block_access()) {
-    /* $variables['title_suffix']['contextual_links']['#access'] = FALSE; */
-  }
 }
 
 /**
