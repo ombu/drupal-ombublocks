@@ -578,7 +578,7 @@ function tiles_block_set_width($module, $delta, $width, $context_id = NULL) {
 
   $bid = tiles_block_get_bid($module, $delta);
   if ($bid) {
-    $check = db_query("SELECT bid FROM {block_width} WHERE context_id = :context_id AND bid = :bid", array(
+    $check = db_query("SELECT bid FROM {tiles_width} WHERE context_id = :context_id AND bid = :bid", array(
       ':context_id' => $context_id,
       ':bid' => $bid,
     ))->fetchField();
@@ -589,10 +589,10 @@ function tiles_block_set_width($module, $delta, $width, $context_id = NULL) {
       'width' => $width,
     );
     if ($check) {
-      drupal_write_record('block_width', $values, array('context_id', 'bid'));
+      drupal_write_record('tiles_width', $values, array('context_id', 'bid'));
     }
     else {
-      drupal_write_record('block_width', $values);
+      drupal_write_record('tiles_width', $values);
     }
   }
   else {
@@ -659,7 +659,7 @@ function tiles_block_get_width($module, $delta, $context_id = NULL) {
   // Pull in the width of the block from the given context, defaulting to the
   // global context if present.
   $bid = tiles_block_get_bid($module, $delta);
-  return db_query("SELECT width FROM {block_width} WHERE context_id in (:context_id) AND bid = :bid LIMIT 1", array(
+  return db_query("SELECT width FROM {tiles_width} WHERE context_id in (:context_id) AND bid = :bid LIMIT 1", array(
     ':context_id' => array($context_id, 'global'),
     ':bid' => $bid,
   ))->fetchField();

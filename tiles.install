@@ -9,7 +9,7 @@
  * Implements hook_schema().
  */
 function tiles_schema() {
-  $schema['block_width'] = array(
+  $schema['tiles_width'] = array(
     'description' => 'Stores widths of tiles',
     'fields' => array(
       'context_id' => array(
@@ -47,19 +47,4 @@ function tiles_schema() {
     ),
   );
   return $schema;
-}
-
-/**
- * Adds a context_id column to allow global blocks to get a per-context width.
- */
-function tiles_update_7001() {
-  db_drop_unique_key('block_width', 'bid');
-  db_add_field('block_width', 'context_id', array(
-    'description' => 'The primary identifier for a context.',
-    'type' => 'varchar',
-    'length' => 255,
-    'not null' => TRUE,
-    'default' => '',
-  ));
-  db_add_unique_key('block_width', 'context_id_bid', array('context_id', 'bid'));
 }
