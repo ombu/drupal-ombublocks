@@ -986,17 +986,6 @@ function tiles_page_deliver_tile_region($page_callback_result) {
  */
 function tiles_render_region($page) {
   $params = json_decode(file_get_contents('php://input'));
-  $params = (object) array(
-    'region' => 'content',
-    'blocks' => array(
-      (object)array(
-        'module' => 'bean',
-        'delta' => 'bean-rte-rte-0',
-        'weight' => -10,
-        'width' => 6,
-      ),
-    ),
-  );
 
   // Build up proper regions.
   tiles_prerender_page($page);
