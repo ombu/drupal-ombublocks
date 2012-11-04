@@ -288,7 +288,6 @@ function tiles_preprocess_block(&$variables) {
   // Add weight to block.
   if (tiles_is_tile($variables['block']->module, $variables['block']->delta)) {
     $variables['classes_array'][] = 'tile';
-    $variables['block']->width = tiles_block_get_width($variables['block']->module, $variables['block']->delta);
 
     // Add data attributes to tiles to facilitate moving.
     $variables['attributes_array']['data-module'] = $variables['block']->module;
@@ -987,6 +986,17 @@ function tiles_page_deliver_tile_region($page_callback_result) {
  */
 function tiles_render_region($page) {
   $params = json_decode(file_get_contents('php://input'));
+  $params = (object) array(
+    'region' => 'content',
+    'blocks' => array(
+      (object)array(
+        'module' => 'bean',
+        'delta' => 'bean-rte-rte-0',
+        'weight' => -10,
+        'width' => 6,
+      ),
+    ),
+  );
 
   // Build up proper regions.
   tiles_prerender_page($page);
@@ -997,8 +1007,8 @@ function tiles_render_region($page) {
   // Pull out old build array before blocks have been added to rows.
   $region = $region['#original'];
   foreach ($params->blocks as $block) {
-    $region[$block->module . '_' . $block->delta]['weight'] = $block->weight;
-    $region[$block->module . '_' . $block->delta]['width'] = $block->width;
+    $region[$block->module . '_' . $block->delta]['#weight'] = $block->weight;
+    $region[$block->module . '_' . $block->delta]['#block']->width = $block->width;
   }
 
   $page = array(
