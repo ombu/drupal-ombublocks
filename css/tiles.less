@@ -20,29 +20,29 @@
 }
 /*End Mixins
 ************/
+.tile-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000; /* +1 than contextual menu */
+  height: 100%;
+  width: 100%;
+  background-color: #646464;
+  background-color: rgba(100, 100, 100, 0.9);
+  .inner { /* Vertical Centering */
+    display: table;
+    width: 100%;
+    height: 100%;
+    .control-wrapper {
+      vertical-align: middle;
+      display: table-cell;
+      width: 100%;
+    }
+  }
+}
 
 .dragging.tile {
   position: relative;
-  .drag-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 1000; /* +1 than contextual menu */
-    height: 100%;
-    width: 100%;
-    background-color: #646464;
-    background-color: rgba(100, 100, 100, 0.9);
-    .inner { /* Vertical Centering */
-      display: table;
-      width: 100%;
-      height: 100%;
-      .control-wrapper {
-        vertical-align: middle;
-        display: table-cell;
-        width: 100%;
-      }
-    }
-  }
   [class*=move] {
     background-image: url(img/sprite.png);
     background-color: transparent;
@@ -124,5 +124,59 @@
 // hilights all regions during dragging
 // TODO: only the region of the dragging block should be hilighted
 .dragging div[data-type='region'] {
-  border: 2px dotted @green;
+  border: 2px dotted green;
+}
+
+.resizing.tile {
+  position: relative;
+  .width-minus, .width-plus {
+    background-color: transparent;
+    position: absolute;
+    border: 0;
+    color: #FFFFFF;
+    font-size: 60px;
+    line-height: 60px;
+    font-family: Arial, sans-serif;
+    text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+    -moz-text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+    -webkit-text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+    &:hover {
+      color: rgb(86, 164, 205);
+    }
+  }
+  .width-minus {
+    left: 12%;
+  }
+  .width-plus {
+    right: 12%;
+  }
+  .save {
+    margin: 11px auto 0;
+    width: 67px;
+    padding: 5px 0;
+    border: solid 1px #424242;
+    display: block;
+    text-transform: uppercase;
+    font-size: 12px;
+    .gradient(#F3F3F3, #AAAAAA);
+    .border-radius(3px);
+    &:hover {
+      .gradient(#AAAAAA, #F3F3F3);
+    }
+  }
+  .cancel {
+    margin: 10px auto 0;
+    width: 67px;
+    text-align: center;
+    text-transform: uppercase;
+    color: white;
+    text-decoration: underline;
+    display: block;
+    font-size: 12px;
+    cursor: pointer;
+    .transition(color);
+    &:hover {
+      color: darken(#fff, 5%);
+    }
+  }
 }
