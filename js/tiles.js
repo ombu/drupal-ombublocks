@@ -79,7 +79,7 @@
     $('.move-left', this.domNode).click($.proxy(this,'moveLeft'));
     $('.move-right', this.domNode).click($.proxy(this,'moveRight'));
     $('.cancel', this.domNode).click($.proxy(this, 'moveCancel'));
-    $('.save', this.domNode).click($.proxy(this, 'saveWeights'));
+    $('.save', this.domNode).click($.proxy(this, 'saveManifest'));
     return this;
   };
 
@@ -171,14 +171,14 @@
 
   Tiles.prototype.handleRequestRegionError = function(jqXHR, textStatus, errorThrown) {};
 
-  Tiles.prototype.saveWeights = function() {
+  Tiles.prototype.saveManifest = function() {
     var manifest = {
-      'active-context': Drupal.settings.tiles.active_context,
-      'region-manifest': this.regionManifest()
+      active_context: Drupal.settings.tiles.active_context,
+      region_manifest: this.regionManifest()
     };
     $.ajax({
       type: 'POST',
-      url: '/admin/tiles-save-weights',
+      url: '/admin/tiles-save-tiles',
       data: JSON.stringify(manifest),
       dataType: 'json',
       success: $.proxy(this.saveHandleSuccess, this),
@@ -195,22 +195,6 @@
   Tiles.prototype.saveHandleError = function() {
     alert('Sorry, there was a problem saving the updated layout. Please try again after the page reloads.');
     window.location.reload();
-  };
-
-  Tiles.prototype.saveWidth = function(e) {
-    var manifest = {
-      'active-context': Drupal.settings.tiles.active_context,
-      'region-manifest': this.regionManifest()
-    };
-    $.ajax({
-      type: 'POST',
-      url: '/admin/tiles-save-weights',
-      data: JSON.stringify(manifest),
-      dataType: 'json',
-      success: $.proxy(this.saveHandleSuccess, this),
-      error: $.proxy(this.saveHandleError, this)
-    });
-    return false;
   };
 
   Tiles.prototype.setResizable = function() {
@@ -244,7 +228,7 @@
     $('.width-plus', this.domNode).click($.proxy(this,'widthPlus'));
     $('.width-minus', this.domNode).click($.proxy(this,'widthMinus'));
     $('.cancel', this.domNode).click($.proxy(this, 'resizeCancel'));
-    $('.save', this.domNode).click($.proxy(this, 'saveWidth'));
+    $('.save', this.domNode).click($.proxy(this, 'saveManifest'));
     return this;
   };
 
