@@ -907,6 +907,7 @@ function _tiles_has_block_access() {
  */
 function _tiles_save_tiles() {
   $params = json_decode(file_get_contents('php://input'));
+  dd($params);
 
   if (!empty($params->active_context)) {
     $context = context_load($params->active_context);
@@ -929,7 +930,7 @@ function _tiles_save_tiles() {
         $context->reactions['tiles']['blocks'][$slug]['weight'] = $block->weight;
       }
 
-      tiles_block_set_width($block->module, $block->delta, $block->wight, $params->active_context);
+      tiles_block_set_width($block->module, $block->delta, $block->width, $params->active_context);
     }
 
     return drupal_json_output(context_save($context));
