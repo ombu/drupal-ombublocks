@@ -907,7 +907,6 @@ function _tiles_has_block_access() {
  */
 function _tiles_save_tiles() {
   $params = json_decode(file_get_contents('php://input'));
-  dd($params);
 
   if (!empty($params->active_context)) {
     $context = context_load($params->active_context);
