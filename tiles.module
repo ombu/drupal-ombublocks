@@ -925,7 +925,7 @@ function _tiles_save_tiles() {
     // Save each block's weight to context and weight to tiles.
     foreach ($params->region_manifest->blocks as $block) {
       $slug = $block->module . '-' . $block->delta;
-      if (in_array($slug, $context->reactions['tiles']['blocks'])) {
+      if (isset($context->reactions['tiles']['blocks'][$slug])) {
         $context->reactions['tiles']['blocks'][$slug]['weight'] = $block->weight;
       }
 
