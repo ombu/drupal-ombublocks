@@ -1,23 +1,23 @@
 (function ($) {
   Drupal.behaviors.tiles = {
-    attach: function(context,settings) {
-      $('.contextual-links .block-arrange a', context).click(function (e) {
+    attach: function(context, settings) {
+      $(Tiles.prototype.selector.moveLink, context).click(function (e) {
         e.preventDefault();
         e.stopPropagation();
         $(e.target).blur();
-        if ($(e.target).closest(Tiles.prototype.selector.block).hasClass('dragging')) {
+        if ($(e.target).closest(Tiles.prototype.selector.tile).hasClass('dragging')) {
           return;
         }
         block = new Tiles(e.target);
         block.setDraggable();
       });
 
-      $('.contextual-links .block-set-width a', context).once('block-width', function() {
+      $(Tiles.prototype.selector.resizeLink, context).once('block-width', function() {
         $(this).click(function(e) {
           e.preventDefault();
           e.stopPropagation();
           $(e.target).blur();
-          if ($(e.target).closest(Tiles.prototype.selector.block).hasClass('dragging')) {
+          if ($(e.target).closest(Tiles.prototype.selector.tile).hasClass('dragging')) {
             return;
           }
           block = new Tiles(e.target);
@@ -34,15 +34,18 @@
 
   Tiles = function(domNode) {
     $d = $(domNode);
-    this.domNode = $d.attr('data-type') === 'block' ? $d : $d.closest(this.selector.block);
-    this.region = $(this.domNode).closest(this.selector.region);
+    this.domNode = $d.attr('data-type') === 'block' ? $d : $d.closest(this.selector.tile);
+    this.region = this.domNode.closest(this.selector.region);
+    this.module = this.domNode.attr('data-module');
+    this.delta = this.domNode.attr('data-delta');
   };
 
   Tiles.prototype.selector = {
-    block: '[data-type="block"]',
     tile: '.tile',
     region: '[data-type="region"]',
-    row: '.row-fluid'
+    row: '.row-fluid',
+    moveLink: '.contextual-links .block-arrange a',
+    resizeLink: '.contextual-links .block-set-width a'
   };
 
   Tiles.prototype.setDraggable = function() {
@@ -76,84 +79,112 @@
     $('.move-left', this.domNode).click($.proxy(this,'moveLeft'));
     $('.move-right', this.domNode).click($.proxy(this,'moveRight'));
     $('.cancel', this.domNode).click($.proxy(this, 'moveCancel'));
-    $('.save', this.domNode).click($.proxy(this, 'saveState'));
+    $('.save', this.domNode).click($.proxy(this, 'saveWeights'));
     return this;
   };
 
-  /**
-   * TODO Check if we need to unbind events of children elements before we
-   * remove the parent to avoid memory leaks (some libs handle this)
-   */
   Tiles.prototype.removeMoveOverlay = function() {
     $('.tile-overlay', this.domNode).remove();
     return this;
   };
 
-  /**
-   * Update left/right buttons
-   */
-  Tiles.prototype.refreshMoveButtons = function() {
-    return this;
-  };
-
   Tiles.prototype.moveLeft = function(e) {
-    this.removeRows(this.region);
     var prev = this.domNode.prev(this.selector.tile);
     if (prev.length === 0) {
-      this.addRows(this.region);
       alert('This is already the first block in this region.');
       return false;
     }
-    this.moved = true;
-    this.domNode.insertBefore(prev);
-    this.addRows(this.region);
+    var manifest = this.regionManifest();
+    var tile_index = manifest.blockIndex[this.module + '-' + this.delta];
+    var prev_tile_index = manifest.blockIndex[prev.attr('data-module') + '-' + prev.attr('data-delta')];
+    var tile_weight = manifest.blocks[tile_index].weight;
+    manifest.blocks[tile_index].weight = manifest.blocks[prev_tile_index].weight;
+    manifest.blocks[prev_tile_index].weight = tile_weight;
+    this.requestRegion(manifest, $.proxy(function() {
+      $("[data-module='" + this.module + "'][data-delta='" + this.delta + "'] " + this.selector.moveLink).click();
+    }, this));
     return false;
   };
 
   Tiles.prototype.moveRight = function(e) {
-    this.removeRows(this.region);
     var next = this.domNode.next(this.selector.tile);
     if (next.length === 0) {
-      this.addRows(this.region);
       alert('This is already the first block in this region.');
       return false;
     }
-    this.moved = true;
-    this.domNode.insertAfter(next);
-    this.addRows(this.region);
+    var manifest = this.regionManifest();
+    var tile_index = manifest.blockIndex[this.module + '-' + this.delta];
+    var next_tile_index = manifest.blockIndex[next.attr('data-module') + '-' + next.attr('data-delta')];
+    var tile_weight = manifest.blocks[tile_index].weight;
+    manifest.blocks[tile_index].weight = manifest.blocks[next_tile_index].weight;
+    manifest.blocks[next_tile_index].weight = tile_weight;
+    this.requestRegion(manifest, $.proxy(function() {
+      $("[data-module='" + this.module + "'][data-delta='" + this.delta + "'] " + this.selector.moveLink).click();
+    }, this));
     return false;
   };
 
   Tiles.prototype.moveCancel = function(e) {
-    // if there hasen't yet been any moving action, do a soft reset
-    if (typeof this.moved === 'undefined' || !this.moved) {
-      this.unsetDraggable();
-      return this;
-    }
-    // if there's already been some moving action, do a hard reset
-    else {
-      window.location.reload();
-    }
+    window.location.reload();
   };
 
-  /**
-   * Static methods
-   */
-  Tiles.prototype.saveState = function() {
-    var region_node, region, ids;
-    region = this.region.attr('data-name');
-    ids = $.makeArray($(this.selector.block, this.region).map(function() {
-      return $(this).attr('data-module') + '-' + $(this).attr('data-delta');
-    }));
+  Tiles.prototype.regionManifest = function() {
+    var manifest = {
+      region: this.region.attr('data-name'),
+      blockIndex: {},
+      blocks: []
+    };
+    $(this.selector.tile, this.region).each(function(i) {
+      var $t = $(this);
+      var module = $t.attr('data-module');
+      var delta = $t.attr('data-delta');
+      manifest.blockIndex[module + '-' + delta] = i;
+      manifest.blocks.push({
+        module: module,
+        delta: delta,
+        width: parseInt($t.attr('data-width'), 10),
+        weight: i
+      });
+    });
+    return manifest;
+  };
+
+  Tiles.prototype.requestRegion = function(manifest, callback) {
+    $.ajax({
+      type: 'POST',
+      url: window.location.toString(),
+      headers: {'X-TILES': 1},
+      data: JSON.stringify(manifest),
+      dataType: 'html',
+      success: [
+        $.proxy(this.handleRequestRegionSuccess, this),
+        callback
+      ],
+      error: $.proxy(this, 'handleRequestRegionError')
+    });
+  };
+
+  Tiles.prototype.handleRequestRegionSuccess = function(data, textStatus, jqXHR) {
+    this.region.html(data);
+    Drupal.attachBehaviors(this.region, Drupal.settings);
+  };
+
+  Tiles.prototype.handleRequestRegionError = function(jqXHR, textStatus, errorThrown) {};
+
+  Tiles.prototype.saveWeights = function() {
+    var manifest = {
+      'active-context': Drupal.settings.tiles.active_context,
+      'region-manifest': this.regionManifest()
+    };
     $.ajax({
       type: 'POST',
       url: '/admin/tiles-save-weights',
-      data: JSON.stringify({ blocks: ids, region: region, active_context: Drupal.settings.tiles.active_context }),
-      success: $.proxy(this, 'saveHandleSuccess'),
-      error: this.saveHandleError,
-      contentType: 'application/json',
-      dataType: 'json'
+      data: JSON.stringify(manifest),
+      dataType: 'json',
+      success: $.proxy(this.saveHandleSuccess, this),
+      error: $.proxy(this.saveHandleError, this)
     });
+    return false;
   };
 
   Tiles.prototype.saveHandleSuccess = function() {
@@ -166,57 +197,18 @@
     window.location.reload();
   };
 
-  Tiles.prototype.removeRows = function(region) {
-    region.find(this.selector.block).unwrap();
-    return region;
-  };
-
-  Tiles.prototype.addRows = function(region) {
-    var blocks = region.find(this.selector.block).detach();
-    var l = blocks.length;
-    var curr_row = $('<div class="row-fluid"></div>');
-    var width;
-    var col_count = 0;
-    var max_cols_per_row = 12;
-
-    for (i = 0; i < l; i++) {
-      width = Tiles.getWidth(blocks[i]);
-
-      if ((col_count + width) <= max_cols_per_row) {
-        col_count += width;
-      }
-      else {
-        region.append(curr_row);
-        curr_row = $('<div class="row-fluid"></div>');
-        col_count = width;
-      }
-
-      curr_row.append(blocks[i]);
-    }
-
-    region.append(curr_row);
-    return region;
-  };
-
-  Tiles.prototype.setWidth = function(width) {
-    this.domNode[0].className = this.domNode[0].className.replace(/\bspan\d+/g, '');
-    this.domNode.addClass('span' + width);
-  };
-
   Tiles.prototype.saveWidth = function(e) {
+    var manifest = {
+      'active-context': Drupal.settings.tiles.active_context,
+      'region-manifest': this.regionManifest()
+    };
     $.ajax({
       type: 'POST',
-      url: '/admin/tiles-save-width',
-      data: JSON.stringify({
-        width: this.getWidth(),
-        module: this.domNode.attr('data-module'),
-        delta: this.domNode.attr('data-delta'),
-        active_context: Drupal.settings.tiles.active_context
-      }),
-      success: $.proxy(this, 'saveHandleSuccess'),
-      error: this.saveHandleError,
-      contentType: 'application/json',
-      dataType: 'json'
+      url: '/admin/tiles-save-weights',
+      data: JSON.stringify(manifest),
+      dataType: 'json',
+      success: $.proxy(this.saveHandleSuccess, this),
+      error: $.proxy(this.saveHandleError, this)
     });
     return false;
   };
@@ -225,7 +217,6 @@
     this.domNode.addClass('resizing');
     $('body').addClass('resizing');
     this.addResizeOverlay();
-    this.startWidth = this.getWidth();
     return this;
   };
 
@@ -258,53 +249,54 @@
   };
 
   Tiles.prototype.widthPlus = function(e) {
-    var currentWidth = this.getWidth();
-    if (currentWidth + 1 > 12) {
+    var manifest = this.regionManifest();
+    var tile_index = manifest.blockIndex[this.module + '-' + this.delta];
+    var tile_width = manifest.blocks[tile_index].width;
+    var steps = Drupal.settings.tiles.steps;
+    var step_index = $.inArray(tile_width, steps);
+    var new_width = steps[step_index + 1];
+
+    if (new_width > steps[-1]) {
       alert('This tile is already full width.');
       return false;
     }
-    this.removeRows(this.region);
-    this.setWidth(currentWidth + 1);
-    this.addRows(this.region);
+
+    manifest.blocks[tile_index].width = new_width;
+    this.requestRegion(manifest, $.proxy(function() {
+      $("[data-module='" + this.module + "'][data-delta='" + this.delta + "'] " + this.selector.resizeLink).click();
+    }, this));
+
     return false;
   };
 
   Tiles.prototype.widthMinus = function(e) {
-    var currentWidth = this.getWidth();
-    if (currentWidth - 1 < 1) {
+    var manifest = this.regionManifest();
+    var tile_index = manifest.blockIndex[this.module + '-' + this.delta];
+    var tile_width = manifest.blocks[tile_index].width;
+    var steps = Drupal.settings.tiles.steps;
+    var step_index = $.inArray(tile_width, steps);
+    var new_width = steps[step_index - 1];
+
+    if (new_width < steps[0]) {
       alert('This tile is already at the minimum width.');
       return false;
     }
-    this.removeRows(this.region);
-    this.setWidth(currentWidth - 1);
-    this.addRows(this.region);
+
+    manifest.blocks[tile_index].width = new_width;
+    this.requestRegion(manifest, $.proxy(function() {
+      $("[data-module='" + this.module + "'][data-delta='" + this.delta + "'] " + this.selector.resizeLink).click();
+    }, this));
+
     return false;
   };
 
-  /**
-   * TODO Check if we need to unbind events of children elements before we
-   * remove the parent to avoid memory leaks (some libs handle this)
-   */
   Tiles.prototype.removeResizeOverlay = function() {
     $('.tile-overlay', this.domNode).remove();
     return this;
   };
 
   Tiles.prototype.resizeCancel = function(e) {
-    this.setWidth(this.startWidth);
-    this.startWidth = undefined;
-    this.unsetResizable();
-  };
-
-  Tiles.prototype.getWidth = function() {
-    return Tiles.getWidth(this.domNode);
-  }
-
-  Tiles.getWidth = function(blockDomNode) {
-    var classString = $(blockDomNode).attr('class');
-    var matches = classString.match(/span(\d+)/);
-    var width = matches.pop();
-    return parseInt(width, 10);
+    window.location.reload();
   };
 
 }(jQuery));

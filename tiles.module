@@ -284,6 +284,7 @@ function tiles_preprocess_block(&$variables) {
     // Add data attributes to tiles to facilitate moving.
     $variables['attributes_array']['data-module'] = $variables['block']->module;
     $variables['attributes_array']['data-delta'] = $variables['block']->delta;
+    $variables['attributes_array']['data-width'] = $variables['block']->width;
   }
 }
 
@@ -952,7 +953,10 @@ function _tiles_js_init() {
 
     $context = _tiles_get_active_context();
     if ($context) {
-      drupal_add_js(array('tiles' => array('active_context' => $context->name)), 'setting');
+      drupal_add_js(array('tiles' => array(
+        'active_context' => $context->name,
+        'steps' => array_keys(tiles_get_steps()),
+      )), 'setting');
     }
 
     $initialized = TRUE;
