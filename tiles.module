@@ -314,23 +314,24 @@ function tiles_block_view_system_main_alter(&$build, $block) {
  * Implements hook_tiles_info().
  */
 function tiles_tiles_info() {
-  // Naming convention is MODULE__DELTA.
-  $blocks = array();
+  $tiles = array(
+    'blocks' => array(),
+    'bean types' => array(),
+  );
 
   // Add system main as a tile.
-  $blocks['system__main'] = 'Main page content';
+  $tiles['blocks'][] = 'system__main';
 
-  // All beans are tiles for now, so don't include all beans in block info.
   if (module_exists('bean')) {
-    $beans = bean_get_all_beans();
-    $bean_types = tiles_get_types();
-    foreach ($beans as $bean) {
-      if (array_key_exists($bean->type, $bean_types)) {
-        $blocks['bean__' . $bean->delta] = $bean->label;
+    // Add all bean types that the current user has permission to edit.
+    $types = bean_get_types();
+    foreach ($types as $k => $v) {
+      if (user_access('administer beans') || user_access("edit any $k bean")) {
+        $tiles['bean types'][] = $k;
       }
     }
   }
-  return $blocks;
+  return $tiles;
 }
 
 /**
@@ -490,36 +491,71 @@ function tiles_page_delivery_callback_alter(&$callback) {
  */
 
 /**
- * Returns an array of tiles defined by hook_tiles_info().
+ * Returns an array of block/bean types defined by hook_tiles_info().
  *
  * @return array
- *   Array of blocks available for tiles in the form of MODULE__DELTA.
+ *   Array of blocks and bean types available for tiles in the form of
+ *   MODULE__DELTA.
  */
-function tiles_get() {
+function tiles_get_tile_types() {
   $tiles = &drupal_static(__FUNCTION__, array());
+
   if (empty($tiles)) {
+    $tiles = array(
+      'blocks' => array(),
+      'bean types' => array(),
+    );
+
     foreach (module_implements('tiles_info') as $module) {
-      $tiles = array_merge($tiles, module_invoke($module,
-        'tiles_info'));
+      $tiles = array_merge_recursive($tiles, module_invoke($module, 'tiles_info'));
     }
     drupal_alter('tiles_info', $tiles);
   }
+
   return $tiles;
 }
 
 /**
- * Returns a list of tile types.
+ * Returns info from tiles_get_tile_types with appropriate labels.
+ *
+ * Useful when showing a list of available blocks/types in an option form.  For
+ * example, see tiles_add_form().
  */
-function tiles_get_types() {
-  $_types = bean_get_types();
-  $types = array();
-  foreach ($_types as $k => $v) {
-    if (user_access('administer beans') || user_access("view any $k bean")) {
-      $types[$k] = $v->getLabel();
+function tiles_get_tile_types_options() {
+  $tiles_options = &drupal_static(__FUNCTION__, array());
+
+  if (empty($tiles_options)) {
+    $tiles_options = array(
+      'blocks' => array(),
+      'bean types' => array(),
+    );
+
+    $tiles = tiles_get_tile_types();
+
+    // Add labels to blocks.
+    foreach ($tiles['blocks'] as $slug) {
+      // Remove main page content from available options. This block is only set
+      // as a tile in order to allow the main page content to be moved.
+      if ($slug == 'system__main') {
+        continue;
+      }
+
+      // Get the label from the module hook_block_info().
+      list($module, $delta) = explode('__', $slug);
+      $block_info = call_user_func($module . '_block_info');
+      $tiles_options['blocks'][$slug] = $block_info[$delta]['info'];
+    }
+
+    // Add labels to bean types.
+    if (!empty($tiles['bean types'])) {
+      $bean_types = bean_get_types();
+      foreach ($tiles['bean types'] as $type) {
+        $tiles_options['bean types'][$type] = $bean_types[$type]->getLabel();
+      }
     }
   }
-  drupal_alter('tiles_types', $types);
-  return $types;
+
+  return $tiles_options;
 }
 
 /**
@@ -531,11 +567,34 @@ function tiles_get_types() {
  *   The delta of the block
  *
  * @return bool
- *   True if block is defined as a tile.
+ *   True if block is defined as a tile, either as a static block, or if the
+ *   block is a bean, then if the bean type is availble to tiles.
  */
 function tiles_is_tile($module, $delta) {
+  $tiles = &drupal_static(__FUNCTION__, array());
+
   $slug = $module . '__' . $delta;
-  return array_key_exists($slug, tiles_get());
+  if (!isset($tiles[$slug])) {
+    $tiles[$slug] = FALSE;
+
+    $tile_info = tiles_get_tile_types();
+
+    // First check if the block is in the static blocks array.
+    if (in_array($module . '__' . $delta, $tile_info['blocks'])) {
+      $tiles[$slug] = TRUE;
+    }
+
+    // Otherwise, check if block is a bean, and if bean type is available to
+    // tiles.
+    if ($module == 'bean') {
+      $bean = bean_load_delta($delta);
+      if (in_array($bean->type, $tile_info['bean types'])) {
+        $tiles[$slug] = TRUE;
+      }
+    }
+  }
+
+  return $tiles[$slug];
 }
 
 /**
@@ -833,23 +892,7 @@ function _tiles_has_block_access() {
 
   // Taxonomy access.
   if ($term = menu_get_object('taxonomy_term', 2)) {
-    // Use workbench access if exists.
-    if (module_exists('workbench_access_taxonomy')) {
-      return workbench_access_taxonomy_access($term);
-    }
-    // Otherwise default to taxonomy access.
-    else {
-      return user_access('administer taxonomy') || user_access('edit terms in ' . $term->vid);
-    }
-  }
-
-  // Handle views associated with taxonomy terms.
-  if (arg(0) == 'taxonomy' && arg(1) == 'term') {
-    $tid = arg(2);
-    $term = taxonomy_term_load($tid);
-    if (module_exists('workbench_access_taxonomy')) {
-      return workbench_access_taxonomy_access($term);
-    }
+    return user_access('administer taxonomy') || user_access('edit terms in ' . $term->vid);
   }
 
   // Default to block move access.

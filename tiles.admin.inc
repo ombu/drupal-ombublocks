@@ -6,7 +6,7 @@
  */
 
 /**
- * Form for adding tiles to a context
+ * Form for adding tiles to a context.
  */
 function tiles_add_form($form, &$form_state, $context_name = '') {
   if (empty($form_state['next_step'])) {
@@ -19,11 +19,12 @@ function tiles_add_form($form, &$form_state, $context_name = '') {
       '#value' => $_GET['destination'],
     );
 
+    $tile_options = tiles_get_tile_types_options();
     $form['block_type'] = array(
       '#type' => 'select',
       '#title' => t('Block Type'),
-      '#options' => array('' => 'Select One') + tiles_get_types(),
-      '#description' => t('Choose the type of block you\'d like to add'),
+      '#options' => array('' => 'Select One') + $tile_options['bean types'] + $tile_options['blocks'],
+      '#description' => t("Choose the type of block you'd like to add"),
       '#required' => TRUE,
     );
 
@@ -74,9 +75,34 @@ function tiles_add_form($form, &$form_state, $context_name = '') {
 }
 
 function tiles_add_form_next($form, &$form_state) {
+  // Only go to the next step if block type is a bean type (i.e. if a bean needs
+  // to be created.
+  $tile_info = tiles_get_tile_types();
+  if (in_array($form_state['values']['block_type'], $tile_info['bean types'])) {
     $form_state['next_step'] = TRUE;
     $form_state['type_values'] = $form_state['values'];
     $form_state['rebuild'] = TRUE;
+  }
+  else {
+    // Save static block to selected region in the active page context.
+    if ($form_state['values']['context']) {
+      $context = context_load($form_state['values']['context']);
+    }
+    else {
+      $context = _tiles_create_path_context($form_state['values']['destination']);
+    }
+
+    list($module, $delta) = explode('__', $form_state['values']['block_type']);
+    $context->reactions['tiles']['blocks'][$module . '-' . $delta] = array(
+      'module' => $module,
+      'delta' => $delta,
+      'region' => $form_state['values']['region'],
+      'weight' => 0,
+    );
+    context_save($context);
+
+    drupal_set_message(t('Block %title added', array('%title' => $form['block_type']['#options'][$form_state['values']['block_type']])));
+  }
 }
 
 function tiles_add_form_add_validate($form, &$form_state) {
