@@ -55,19 +55,13 @@ function tiles_menu() {
     'file' => 'tiles.admin.inc',
   );
 
-  $items['admin/tiles-save-weights'] = array(
-    'title' => 'Save tile weight',
-    'page callback' => '_tiles_save_weights',
+  $items['admin/tiles-save-tiles'] = array(
+    'title' => 'Save tiles weight and width',
+    'page callback' => '_tiles_save_tiles',
     'access arguments' => array('arrange tiles'),
     'type' => MENU_CALLBACK,
   );
 
-  $items['admin/tiles-save-width'] = array(
-    'title' => 'Save tile width',
-    'page callback' => '_tiles_save_width',
-    'access arguments' => array('arrange tiles'),
-    'type' => MENU_CALLBACK,
-  );
   return $items;
 }
 
@@ -900,10 +894,11 @@ function _tiles_has_block_access() {
 }
 
 /**
- * AJAX Callback: Save the weights of blocks to the current page's context.
+ * AJAX Callback: Save the weights and widths of blocks to the current page's context.
  */
-function _tiles_save_weights() {
+function _tiles_save_tiles() {
   $params = json_decode(file_get_contents('php://input'));
+
   if (!empty($params->active_context)) {
     $context = context_load($params->active_context);
 
@@ -918,26 +913,17 @@ function _tiles_save_weights() {
       );
     }
 
-    foreach ($context->reactions['tiles']['blocks'] as $key => &$value) {
-      if ($value['region'] !== str_replace('-', '_', $params->region)) {
-        continue;
+    // Save each block's weight to context and weight to tiles.
+    foreach ($params->blocks as $block) {
+      $slug = $block->module . '_' . $block->delta;
+      if (in_array($slug, $context->reactions['tiles']['blocks'])) {
+        $context->reactions['tiles']['blocks'][$slug]['weight'] = $block->weight;
       }
-      $i = array_search($value['module'] . '-' . $value['delta'], $params->blocks);
-      if ($i !== FALSE) {
-        $value['weight'] = $i;
-      }
-    }
-    return drupal_json_output(context_save($context));
-  }
-}
 
-/**
- * AJAX Callback: Save the width of a specific block.
- */
-function _tiles_save_width() {
-  $params = json_decode(file_get_contents('php://input'));
-  if (!empty($params->active_context)) {
-    tiles_block_set_width($params->module, $params->delta, $params->width, $params->active_context);
+      tiles_block_set_width($block->module, $block->delta, $block->wight, $params->active_context);
+    }
+
+    return drupal_json_output(context_save($context));
   }
 }
 
