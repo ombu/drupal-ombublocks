@@ -6,14 +6,24 @@
  */
 
 /**
- * Tell Tiles which blocks it should manage.
+ * Tell Tiles which bean types and blocks can be added to a page as a tile.
+ * @TODO JD to document after implementation.
  */
-function hook_tiles_info(&$tiles) {
-  // Naming convention is MODULE__DELTA.
-  $tiles['user__new'] = array(
-    'regions' => array('foo', 'bar', 'baz'),
+function hook_tiles_info() {
+  return array(
+    'bean types' => array(
+      'ombuslide'
+    ),
+    'blocks' => array(
+      'user__login',
+    )
   );
-  return $tiles;
+}
+
+/**
+ * Alter hook for hook_tiles_info.
+ */
+function hook_tiles_info_alter(&$tiles) {
 }
 
 /**
