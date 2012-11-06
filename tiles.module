@@ -320,7 +320,7 @@ function tiles_tiles_info() {
     // Add all bean types that the current user has permission to edit.
     $types = bean_get_types();
     foreach ($types as $k => $v) {
-      if (user_access('administer beans') || user_access("edit any $k bean")) {
+      if (user_access('administer beans') || user_access("view any $k bean")) {
         $tiles['bean types'][] = $k;
       }
     }
@@ -513,7 +513,8 @@ function tiles_get_tile_types() {
  * Returns info from tiles_get_tile_types with appropriate labels.
  *
  * Useful when showing a list of available blocks/types in an option form.  For
- * example, see tiles_add_form().
+ * example, see tiles_add_form(). Also checks if current user has access to edit
+ * bean types.
  */
 function tiles_get_tile_types_options() {
   $tiles_options = &drupal_static(__FUNCTION__, array());
@@ -544,7 +545,11 @@ function tiles_get_tile_types_options() {
     if (!empty($tiles['bean types'])) {
       $bean_types = bean_get_types();
       foreach ($tiles['bean types'] as $type) {
-        $tiles_options['bean types'][$type] = $bean_types[$type]->getLabel();
+        // Check edit access on bean type, since user should not be able to
+        // create new blocks without proper access.
+        if (user_access("edit any $type bean")) {
+          $tiles_options['bean types'][$type] = $bean_types[$type]->getLabel();
+        }
       }
     }
   }
