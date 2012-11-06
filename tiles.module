@@ -75,9 +75,8 @@ function tiles_menu() {
  * Implements hook_menu_alter().
  */
 function tiles_menu_alter(&$items) {
-  if (module_exists('entity_translation')) {
-    $items['block/%bean_delta/translate']['context'] = MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE;
-  }
+  // Override block delete to handle deleting block from tile group. Also show
+  // delete in contextual menu.
   $items['admin/structure/block/manage/%/%/delete']['title'] = t('Delete');
   $items['admin/structure/block/manage/%/%/delete']['type'] = MENU_LOCAL_TASK;
   $items['admin/structure/block/manage/%/%/delete']['context'] = MENU_CONTEXT_INLINE;
@@ -322,11 +321,13 @@ function tiles_tiles_info() {
   $blocks['system__main'] = 'Main page content';
 
   // All beans are tiles for now, so don't include all beans in block info.
-  $beans = bean_get_all_beans();
-  $bean_types = tiles_get_types();
-  foreach ($beans as $bean) {
-    if (array_key_exists($bean->type, $bean_types)) {
-      $blocks['bean__' . $bean->delta] = $bean->label;
+  if (module_exists('bean')) {
+    $beans = bean_get_all_beans();
+    $bean_types = tiles_get_types();
+    foreach ($beans as $bean) {
+      if (array_key_exists($bean->type, $bean_types)) {
+        $blocks['bean__' . $bean->delta] = $bean->label;
+      }
     }
   }
   return $blocks;
@@ -519,22 +520,6 @@ function tiles_get_types() {
   }
   drupal_alter('tiles_types', $types);
   return $types;
-}
-
-/**
- * Whether a bean is a tile.
- *
- * @param object $bean
- *   The Bean object.
- *
- * @return bool
- *   True if the bean is available for tiles.
- */
-function tiles_bean_is_tile($bean) {
-  // All beans are tiles for now.
-  return TRUE;
-  // $slug = 'bean' . '__' . $bean->delta;
-  // return array_key_exists($slug, tiles_get());
 }
 
 /**
@@ -833,7 +818,7 @@ function _tiles_get_active_context() {
 /**
  * Stub function, handled in js.
  */
-function _tiles_move($bean) {
+function _tiles_move($block) {
 }
 
 /**
