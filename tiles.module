@@ -913,7 +913,7 @@ function _tiles_save_tiles() {
 
     // If system main exists in incoming blocks, make sure that it exists in the
     // context as well, otherwise weights won't save properly.
-    if (in_array('system-main', $params->blocks) && !array_key_exists('system-main', $context->reactions['tiles']['blocks'])) {
+    if (in_array('system-main', $params->region_manifest->blocks) && !array_key_exists('system-main', $context->reactions['tiles']['blocks'])) {
       $context->reactions['tiles']['blocks']['system_main'] = array(
         'module' => 'system',
         'delta' => 'main',
