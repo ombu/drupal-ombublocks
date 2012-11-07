@@ -18,7 +18,7 @@ class tiles_context_reaction_block extends context_reaction_block {
         // Only set the width of the block if it is not already set.
         if (isset($page[$region_key][$block_key]['#block'])) {
           $block = $page[$region_key][$block_key]['#block'];
-          if (!isset($block->width)) {
+          if (!isset($block->bypass_width)) {
             $page[$region_key][$block_key]['#block']->width = tiles_get_block_width($block->module, $block->delta);
           }
         }
