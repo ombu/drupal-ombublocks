@@ -209,7 +209,7 @@ function tiles_set_width($form, &$form_state, $module, $delta) {
     '#markup' => t('<p>Select the width of this block.</p>'),
   );
 
-  $width = tiles_block_get_width($module, $delta, $form['#context']);
+  $width = tiles_get_block_width($module, $delta, $form['#context']);
 
   $steps = tiles_get_steps();
   $form['width'] = array(

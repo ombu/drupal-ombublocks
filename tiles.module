@@ -437,7 +437,7 @@ function tiles_entity_load($entities, $type) {
       $context_id = 'tiles-' . _tiles_normalize_path($_GET['destination']);
     }
     foreach ($entities as $entity) {
-      $entity->width = tiles_block_get_width('bean', $entity->delta, $context_id);
+      $entity->width = tiles_get_block_width('bean', $entity->delta, $context_id);
     }
   }
 }
@@ -654,7 +654,7 @@ function tiles_block_set_width($module, $delta, $width, $context_id = NULL) {
  *
  * @return int $width
  */
-function tiles_get_block_width($module, $delta) {
+function tiles_get_block_width($module, $delta, $context_id = NULL) {
   // Default to max width.
   $width = tiles_get_max_step();
   $block_widths = module_invoke_all('block_widths');
@@ -666,45 +666,29 @@ function tiles_get_block_width($module, $delta) {
 
   // Get width from tiles.
   if (tiles_is_tile($module, $delta)) {
-    $tile_width = tiles_block_get_width($module, $delta);
+
+    // @todo: implement caching
+    if (is_null($context_id)) {
+      $context = _tiles_get_active_context();
+      if ($context) {
+        $context_id = $context->name;
+      }
+    }
+
+    // Pull in the width of the block from the given context, defaulting to the
+    // global context if present.
+    $bid = tiles_block_get_bid($module, $delta);
+    $tile_width = db_query("SELECT width FROM {tiles_width} WHERE context_id in (:context_id) AND bid = :bid LIMIT 1", array(
+      ':context_id' => array($context_id, 'global'),
+      ':bid' => $bid,
+    ))->fetchField();
+
     if ($tile_width) {
       $width = $tile_width;
     }
   }
 
   return $width;
-}
-
-/**
- * Gets the width for a block.
- *
- * @param string $module
- *   The module the block belongs to.
- * @param string $delta
- *   The delta of the block
- * @param string $context_id
- *   The context in which to find the block width.  Will default to a `global`
- *   context if NULL.
- *
- * @return int
- *   The width of the given block.
- */
-function tiles_block_get_width($module, $delta, $context_id = NULL) {
-  // @todo: implement caching
-  if (is_null($context_id)) {
-    $context = _tiles_get_active_context();
-    if ($context) {
-      $context_id = $context->name;
-    }
-  }
-
-  // Pull in the width of the block from the given context, defaulting to the
-  // global context if present.
-  $bid = tiles_block_get_bid($module, $delta);
-  return db_query("SELECT width FROM {tiles_width} WHERE context_id in (:context_id) AND bid = :bid LIMIT 1", array(
-    ':context_id' => array($context_id, 'global'),
-    ':bid' => $bid,
-  ))->fetchField();
 }
 
 /**
