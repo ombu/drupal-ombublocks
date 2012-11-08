@@ -672,41 +672,6 @@ function tiles_get_max_step() {
 }
 
 /**
- * Gets the max step allowed for the current theme.
- */
-
-/**
- * Theme implementations.
- */
-
-/**
- * Default implementation of theme_tiles_region().
- * @TODO Do we need this?
- */
-function theme_tiles_region($variables) {
-  return '<div class="tiles-region">' . $variables['element']['#children'] . '</div>';
-}
-
-/**
- * Default implementation of theme_tiles_row().
- */
-function theme_tiles_row($variables) {
-  return '<div class="tiles-row">' . $variables['element']['#children'] . '</div>';
-}
-
-/**
- * Default implementation of theme_tiles_tile().
- */
-function theme_tiles_tile($variables) {
-  return '<div class="tiles-tile">' . $variables['element']['#children'] . '</div>';
-}
-
-
-/**
- * Private functions
- */
-
-/**
  * Create a new context for the given path.
  *
  * @param string $path
@@ -768,6 +733,37 @@ function _tiles_create_path_context($path, $default_blocks = array()) {
 
   return $context;
 }
+
+/**
+ * Theme implementations.
+ */
+
+/**
+ * Default implementation of theme_tiles_region().
+ * @TODO Do we need this?
+ */
+function theme_tiles_region($variables) {
+  return '<div class="tiles-region">' . $variables['element']['#children'] . '</div>';
+}
+
+/**
+ * Default implementation of theme_tiles_row().
+ */
+function theme_tiles_row($variables) {
+  return '<div class="tiles-row">' . $variables['element']['#children'] . '</div>';
+}
+
+/**
+ * Default implementation of theme_tiles_tile().
+ */
+function theme_tiles_tile($variables) {
+  return '<div class="tiles-tile">' . $variables['element']['#children'] . '</div>';
+}
+
+
+/**
+ * Private functions
+ */
 
 /**
  * Normalize a menu path for use when saving/loading tiles contexts.
