@@ -39,12 +39,11 @@ function tiles_menu() {
     'title' => 'Width',
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_INLINE,
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('tiles_set_width', 4, 5),
+    'page callback' => '_tiles_width',
+    'page arguments' => array(4, 5),
     'access callback' => 'tiles_is_tile',
     'access arguments' => array(4, 5),
     'weight' => -9,
-    'file' => 'tiles.admin.inc',
   );
 
   $items['admin/tiles/add'] = array(
@@ -391,54 +390,6 @@ function tiles_form_bean_delete_confirm_alter(&$form, $form_state) {
   if (isset($_GET['destination'])) {
     $form['#context'] = 'tiles-' . _tiles_normalize_path($_GET['destination']);
     $form['#submit'][] = 'tiles_delete_submit';
-  }
-}
-
-/**
- * Implements hook_form_FORM_ID_alter().
- */
-function tiles_form_bean_form_alter(&$form, $form_state, $form_id) {
-  if (isset($_GET['destination'])) {
-    $form['#context'] = 'tiles-' . _tiles_normalize_path($_GET['destination']);
-  }
-
-  // Add in width selector to bean forms.  This only covers edit bean forms,
-  // since adding a new bean form is coming directly through
-  // tiles_add_form().
-  $steps = tiles_get_steps();
-  $form['width'] = array(
-    '#type' => 'select',
-    '#title' => t('Width'),
-    '#options' => $steps,
-    '#default_value' => !empty($form['bean']['#value']->width) ? $form['bean']['#value']->width : tiles_get_max_step(),
-    '#description' => t('Select the width of this block.'),
-  );
-  $form['#submit'][] = 'tiles_form_bean_form_save_weight';
-}
-
-/**
- * Save weight for bean.
- */
-function tiles_form_bean_form_save_weight($form, $form_state) {
-  if (isset($form['#context'])) {
-    $bean = $form_state['bean'];
-    tiles_block_set_width('bean', $bean->delta, $form_state['values']['width'], $form['#context']);
-  }
-}
-
-/**
- * Implements hook_entity_load().
- */
-function tiles_entity_load($entities, $type) {
-  // Save the block width for beans.
-  if ($type == 'bean') {
-    $context_id = NULL;
-    if (isset($_GET['destination'])) {
-      $context_id = 'tiles-' . _tiles_normalize_path($_GET['destination']);
-    }
-    foreach ($entities as $entity) {
-      $entity->width = tiles_get_block_width('bean', $entity->delta, $context_id);
-    }
   }
 }
 
@@ -861,6 +812,12 @@ function _tiles_get_active_context() {
  * Stub function, handled in js.
  */
 function _tiles_move($block) {
+}
+
+/**
+ * Stub function, handled in js.
+ */
+function _tiles_width($block) {
 }
 
 /**

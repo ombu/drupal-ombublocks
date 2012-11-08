@@ -54,16 +54,6 @@ function tiles_add_form($form, &$form_state, $context_name = '') {
     $form['bean_form']['label']['#access'] = FALSE;
     $form['bean_form']['label']['#default_value'] = 'ombucleanup-tempkey';
 
-    // Add in width form element for beans.
-    $steps = tiles_get_steps();
-    $form['width'] = array(
-      '#type' => 'select',
-      '#title' => t('Width'),
-      '#options' => $steps,
-      '#default_value' => tiles_get_max_step(),
-      '#description' => t('Select the width of this block.'),
-    );
-
     $form['save'] = array(
       '#type' => 'submit',
       '#value' => t('Add'),
@@ -176,9 +166,6 @@ function tiles_add_form_add_submit($form, &$form_state) {
     $context = _tiles_create_path_context($form_state['type_values']['destination']);
   }
 
-  // Save the weight for this bean.
-  tiles_block_set_width('bean', $bean->delta, $form_state['values']['width'], $context->name);
-
   $context->reactions['tiles']['blocks']['bean-' . $bean->delta] = array(
     'module' => 'bean',
     'delta' => $bean->delta,
@@ -186,59 +173,6 @@ function tiles_add_form_add_submit($form, &$form_state) {
     'weight' => 0,
   );
   context_save($context);
-}
-
-/**
- * Form for setting the width on a block.
- */
-function tiles_set_width($form, &$form_state, $module, $delta) {
-  if (isset($_GET['destination'])) {
-    $form['#context'] = 'tiles-' . _tiles_normalize_path($_GET['destination']);
-  }
-
-  $form['module'] = array(
-    '#type' => 'value',
-    '#value' => $module,
-  );
-  $form['delta'] = array(
-    '#type' => 'value',
-    '#value' => $delta,
-  );
-
-  $form['help'] = array(
-    '#markup' => t('<p>Select the width of this block.</p>'),
-  );
-
-  $width = tiles_get_block_width($module, $delta, $form['#context']);
-
-  $steps = tiles_get_steps();
-  $form['width'] = array(
-    '#type' => 'select',
-    '#title' => t('Width'),
-    '#options' => tiles_get_steps(),
-    '#default_value' => $width ? $width : tiles_get_max_step(),
-
-  );
-
-  $form['actions'] = array(
-    '#type' => 'actions',
-    'submit' => array(
-      '#type' => 'submit',
-      '#value' => t('Save'),
-      '#weight' => 5,
-      '#submit' => array('tiles_set_width_submit'),
-    ),
-  );
-
-  return $form;
-}
-
-/**
- * Submit handler for saving block width.
- */
-function tiles_set_width_submit($form, &$form_state) {
-  tiles_block_set_width($form_state['values']['module'], $form_state['values']['delta'], $form_state['values']['width'], $form['#context']);
-  drupal_set_message('Block width saved');
 }
 
 /**
