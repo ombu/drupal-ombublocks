@@ -129,8 +129,9 @@
   };
 
   Tiles.prototype.regionManifest = function() {
+    var region = this.region.attr('data-name');
     var manifest = {
-      region: this.region.attr('data-name'),
+      region: region,
       blockIndex: {},
       blocks: []
     };
@@ -142,6 +143,7 @@
       manifest.blocks.push({
         module: module,
         delta: delta,
+        region: region,
         width: parseInt($t.attr('data-width'), 10),
         weight: i
       });
