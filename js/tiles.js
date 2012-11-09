@@ -89,14 +89,14 @@
   };
 
   Tiles.prototype.moveLeft = function(e) {
-    var prev = this.domNode.prev(this.selector.tile);
-    if (prev.length === 0) {
+    var manifest = this.regionManifest();
+    if (manifest.blocks[0].module === this.module &&
+        manifest.blocks[0].delta === this.delta) {
       alert('This is already the first block in this region.');
       return false;
     }
-    var manifest = this.regionManifest();
     var tile_index = manifest.blockIndex[this.module + '-' + this.delta];
-    var prev_tile_index = manifest.blockIndex[prev.attr('data-module') + '-' + prev.attr('data-delta')];
+    var prev_tile_index = tile_index - 1;
     var tile_weight = manifest.blocks[tile_index].weight;
     manifest.blocks[tile_index].weight = manifest.blocks[prev_tile_index].weight;
     manifest.blocks[prev_tile_index].weight = tile_weight;
@@ -107,14 +107,14 @@
   };
 
   Tiles.prototype.moveRight = function(e) {
-    var next = this.domNode.next(this.selector.tile);
-    if (next.length === 0) {
-      alert('This is already the first block in this region.');
+    var manifest = this.regionManifest();
+    if (manifest.blocks[manifest.blocks.length-1].module === this.module &&
+        manifest.blocks[manifest.blocks.length-1].delta === this.delta) {
+      alert('This is already the last block in this region.');
       return false;
     }
-    var manifest = this.regionManifest();
     var tile_index = manifest.blockIndex[this.module + '-' + this.delta];
-    var next_tile_index = manifest.blockIndex[next.attr('data-module') + '-' + next.attr('data-delta')];
+    var next_tile_index = tile_index + 1;
     var tile_weight = manifest.blocks[tile_index].weight;
     manifest.blocks[tile_index].weight = manifest.blocks[next_tile_index].weight;
     manifest.blocks[next_tile_index].weight = tile_weight;
