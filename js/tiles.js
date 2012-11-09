@@ -35,6 +35,8 @@
   Tiles = function(domNode) {
     $d = $(domNode);
     this.domNode = $d.attr('data-type') === 'block' ? $d : $d.closest(this.selector.tile);
+    // Close the contextual links.
+    this.domNode.closest('.contextual-links-region').mouseleave();
     this.region = this.domNode.closest(this.selector.region);
     this.module = this.domNode.attr('data-module');
     this.delta = this.domNode.attr('data-delta');
