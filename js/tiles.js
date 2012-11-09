@@ -135,6 +135,7 @@
     var region = this.region.attr('data-name');
     var manifest = {
       region: region,
+      activeContext: Drupal.settings.tiles.active_context,
       blockIndex: {},
       blocks: []
     };
@@ -177,10 +178,7 @@
   Tiles.prototype.handleRequestRegionError = function(jqXHR, textStatus, errorThrown) {};
 
   Tiles.prototype.saveManifest = function() {
-    var manifest = {
-      active_context: Drupal.settings.tiles.active_context,
-      region_manifest: this.regionManifest()
-    };
+    var manifest = this.regionManifest();
     $.ajax({
       type: 'POST',
       url: '/admin/tiles-save-tiles',

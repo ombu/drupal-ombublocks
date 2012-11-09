@@ -899,10 +899,10 @@ function _tiles_has_block_access() {
 function _tiles_save_tiles() {
   $params = json_decode(file_get_contents('php://input'));
 
-  if (!empty($params->active_context)) {
-    $context = tiles_get_context('context', $params->active_context);
+  if (!empty($params->activeContext)) {
+    $context = tiles_get_context('context', $params->activeContext);
 
-    $return = tiles_assign_tiles($context, $params->region_manifest->blocks);
+    $return = tiles_assign_tiles($context, $params->blocks);
 
     return drupal_json_output($return);
   }
