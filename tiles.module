@@ -389,11 +389,12 @@ function tiles_admin_paths() {
  * Implements hook_node_insert().
  */
 function tiles_node_insert($node) {
-  // Create a new context for this node.
-  _tiles_create_path_context(
-    'node/' . $node->nid,
-    isset($node->tiles) ? $node->tiles : array()
-  );
+  // Allow tiles to be setup programmatically by assigning appropriate blocks to
+  // the 'tiles' property on the node object.
+  if (isset($node->tiles)) {
+    $context = tiles_get_context('path', 'node/' . $node->nid);
+    tiles_assign_tiles($context, $node->tiles);
+  }
 }
 
 /**
@@ -672,23 +673,53 @@ function tiles_get_max_step() {
 }
 
 /**
+ * Returns a tiles-enabled context.
+ *
+ * Either creates a new context based on a path, or returns an existing context.
+ * Whether a context is retrieved base on the path depends on the type flag.
+ *
+ * @param string $type
+ *   The type of context to retrieve, can be one of:
+ *   - 'context': A context id.
+ *   - 'path': The path used to lookup context.
+ * @param string $identifier
+ *   Either a context id or path, depending on what the $type is.  If $type is
+ *   'path' and a context doesn't exist yet for that path, then a new one will
+ *   be created.
+ *
+ * @return object
+ *   The fully loaded context object.
+ */
+function tiles_get_context($type, $identifier) {
+  switch ($type) {
+    case 'context':
+      return context_load($identifier);
+      break;
+
+    case 'path':
+      $context_id = 'tiles-' . _tiles_normalize_path($identifier);
+
+      // Check to see if context already exists.
+      if ($context = tiles_get_context('context', $context_id)) {
+        return $context;
+      }
+
+      // If context doesn't already exist, create a new one.
+      return tiles_create_context($identifier);
+      break;
+  }
+}
+
+/**
  * Create a new context for the given path.
  *
  * @param string $path
  *   The internal path to create a context for.
- * @param array $default_blocks
- *   Array of blocks to add to the node context.  Only applies if
- *   $inheritance_type is TILES_INHERIT_NONE.
  *
  * @return $context
  *   The fully created context object.
  */
-function _tiles_create_path_context($path, $default_blocks = array()) {
-  // Check to see if context already exists.
-  if ($context = context_load('tiles-' . _tiles_normalize_path($path))) {
-    return $context;
-  }
-
+function tiles_create_context($path) {
   // Create a new context.
   $context = new stdClass();
   $context->tag = 'tiles';
@@ -704,13 +735,8 @@ function _tiles_create_path_context($path, $default_blocks = array()) {
     );
   }
 
-  // For now assume that $default_blocks is well structured.  We can add in
-  // checking in the future.
-  $context->reactions['tiles']['blocks'] = $default_blocks;
-
   // Normalize path and set as context name.
-  $path_name = _tiles_normalize_path($path);
-  $context->name = 'tiles-' . $path_name;
+  $context->name = 'tiles-' . _tiles_normalize_path($path);
   $context->description = '';
 
   // Set the path as the only condition.
@@ -722,16 +748,57 @@ function _tiles_create_path_context($path, $default_blocks = array()) {
     ),
   );
 
-  // Check if any of the blocks have widths set, and save for this context.
-  foreach ($context->reactions['tiles']['blocks'] as $id => $block) {
+  context_save($context);
+
+  return $context;
+}
+
+/**
+ * Assign tiles (blocks) to a given context.
+ *
+ * Updates given context to include blocks in the passed array, or if the blocks
+ * are already in the context, updates weights of blocks within context.  Will
+ * also update the widths of the blocks if necessary.
+ *
+ * @param object $context
+ *   The tiles context for a given page.
+ * @param array $tiles
+ *   Array of blocks to be added/updated on the context.  Each block array
+ *   should have the following keys:
+ *     - module: The module the block belongs to.
+ *     - delta: The delta of the block.
+ *     - region: The region the block should be added to.
+ *     - weight: The weight of the block relative to other blocks in the
+ *       region.
+ *     - width: The width the block should have for this context.
+ *   A properly formatted $tiles array should look like:
+ *   @code
+ *     $tiles = array(
+ *       array(
+ *         'module' => 'bean',
+ *         'delta' => 'delta1',
+ *         'region' => 'content',
+ *         'weight' => 10,
+ *         'width' => 6,
+ *       ),
+ *     );
+ *   @endcode
+ *
+ * @return boolean
+ *   True on successful context save.
+ */
+function tiles_assign_tiles($context, $tiles) {
+  foreach ($tiles as $block) {
+    $block = (array) $block;
+    $slug = $block['module'] . '-' . $block['delta'];
+    $context->reactions['tiles']['blocks'][$slug] = $block;
+
     if (isset($block['width'])) {
       tiles_set_width($block['module'], $block['delta'], $block['width'], $context->name);
     }
   }
 
-  context_save($context);
-
-  return $context;
+  return context_save($context);
 }
 
 /**
@@ -835,30 +902,11 @@ function _tiles_save_tiles() {
   $params = json_decode(file_get_contents('php://input'));
 
   if (!empty($params->active_context)) {
-    $context = context_load($params->active_context);
+    $context = tiles_get_context('context', $params->active_context);
 
-    // If system main exists in incoming blocks, make sure that it exists in the
-    // context as well, otherwise weights won't save properly.
-    if (in_array('system-main', $params->region_manifest->blocks) && !array_key_exists('system-main', $context->reactions['tiles']['blocks'])) {
-      $context->reactions['tiles']['blocks']['system_main'] = array(
-        'module' => 'system',
-        'delta' => 'main',
-        'region' => $params->region_manifest->region,
-        'weight' => '0',
-      );
-    }
+    $return = tiles_assign_tiles($context, $params->region_manifest->blocks);
 
-    // Save each block's weight to context and weight to tiles.
-    foreach ($params->region_manifest->blocks as $block) {
-      $slug = $block->module . '-' . $block->delta;
-      if (isset($context->reactions['tiles']['blocks'][$slug])) {
-        $context->reactions['tiles']['blocks'][$slug]['weight'] = $block->weight;
-      }
-
-      tiles_set_width($block->module, $block->delta, $block->width, $params->active_context);
-    }
-
-    return drupal_json_output(context_save($context));
+    return drupal_json_output($return);
   }
 }
 

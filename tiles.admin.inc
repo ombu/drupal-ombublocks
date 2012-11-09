@@ -73,23 +73,27 @@ function tiles_add_form_next($form, &$form_state) {
     $form_state['type_values'] = $form_state['values'];
     $form_state['rebuild'] = TRUE;
   }
+  // Save static block to selected region in the active page context.
   else {
-    // Save static block to selected region in the active page context.
+    // Get the correct context.
     if ($form_state['values']['context']) {
-      $context = context_load($form_state['values']['context']);
+      $context = tiles_get_context('context', $form_state['values']['context']);
     }
     else {
-      $context = _tiles_create_path_context($form_state['values']['destination']);
+      $context = tiles_get_context('path', $form_state['values']['destination']);
     }
 
+    // Generate proper tiles array.
     list($module, $delta) = explode('__', $form_state['values']['block_type']);
-    $context->reactions['tiles']['blocks'][$module . '-' . $delta] = array(
-      'module' => $module,
-      'delta' => $delta,
-      'region' => $form_state['values']['region'],
-      'weight' => 0,
+    $tiles = array(
+      array(
+        'module' => $module,
+        'delta' => $delta,
+        'region' => $form_state['values']['region'],
+        'weight' => 50,
+      ),
     );
-    context_save($context);
+    tiles_assign_tiles($context, $tiles);
 
     drupal_set_message(t('Block %title added', array('%title' => $form['block_type']['#options'][$form_state['values']['block_type']])));
   }
@@ -160,19 +164,22 @@ function tiles_add_form_add_submit($form, &$form_state) {
 
   // Save bean to selected region in the active page context.
   if ($form_state['type_values']['context']) {
-    $context = context_load($form_state['type_values']['context']);
+    $context = tiles_get_context('context', $form_state['type_values']['context']);
   }
   else {
-    $context = _tiles_create_path_context($form_state['type_values']['destination']);
+    $context = tiles_get_context('path', $form_state['type_values']['destination']);
   }
 
-  $context->reactions['tiles']['blocks']['bean-' . $bean->delta] = array(
-    'module' => 'bean',
-    'delta' => $bean->delta,
-    'region' => $form_state['type_values']['region'],
-    'weight' => 0,
+  // Generate proper tiles array.
+  $tiles = array(
+    array(
+      'module' => 'bean',
+      'delta' => $bean->delta,
+      'region' => $form_state['type_values']['region'],
+      'weight' => 50,
+    ),
   );
-  context_save($context);
+  tiles_assign_tiles($context, $tiles);
 }
 
 /**
