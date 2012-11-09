@@ -38,6 +38,7 @@
     this.region = this.domNode.closest(this.selector.region);
     this.module = this.domNode.attr('data-module');
     this.delta = this.domNode.attr('data-delta');
+    this.width = parseInt(this.domNode.attr('data-width'), 10);;
   };
 
   Tiles.prototype.selector = {
@@ -222,7 +223,8 @@
     // load overwrites the whole dom.
     document.write = function() {};
 
-    var overlayContent = '<button class="width-minus">-</button>';
+    var overlayContent = '<span class="width-current">' + Drupal.settings.tiles.steps[this.width] + '</span>';
+    overlayContent += '<button class="width-minus">-</button>';
     overlayContent += '<button class="width-plus">+</button>';
     overlayContent += '<button class="save">Save</button>';
     overlayContent += '<span class="cancel">Cancel</span>';
@@ -237,8 +239,8 @@
   Tiles.prototype.widthPlus = function(e) {
     var manifest = this.regionManifest();
     var tile_index = manifest.blockIndex[this.module + '-' + this.delta];
-    var tile_width = manifest.blocks[tile_index].width;
-    var steps = Drupal.settings.tiles.steps;
+    var tile_width = this.width;
+    var steps = Drupal.settings.tiles.stepsKeys;
     var step_index = $.inArray(tile_width, steps);
     var new_width = steps[step_index + 1];
 
@@ -258,8 +260,8 @@
   Tiles.prototype.widthMinus = function(e) {
     var manifest = this.regionManifest();
     var tile_index = manifest.blockIndex[this.module + '-' + this.delta];
-    var tile_width = manifest.blocks[tile_index].width;
-    var steps = Drupal.settings.tiles.steps;
+    var tile_width = this.width;
+    var steps = Drupal.settings.tiles.stepsKeys;
     var step_index = $.inArray(tile_width, steps);
     var new_width = steps[step_index - 1];
 

@@ -930,10 +930,13 @@ function _tiles_js_init() {
 
     $context = _tiles_get_active_context();
     if ($context) {
-      drupal_add_js(array('tiles' => array(
-        'active_context' => $context->name,
-        'steps' => array_keys(tiles_get_steps()),
-      )), 'setting');
+      drupal_add_js(array(
+        'tiles' => array(
+          'active_context' => $context->name,
+          'steps' => tiles_get_steps(),
+          'stepsKeys' => array_keys(tiles_get_steps()),
+        ),
+      ), 'setting');
     }
 
     $initialized = TRUE;
