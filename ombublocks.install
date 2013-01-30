@@ -63,3 +63,31 @@ function ombublocks_update_7001() {
   ));
   db_add_unique_key('block_width', 'context_id_bid', array('context_id', 'bid'));
 }
+
+/**
+ * Upgrades to tiles.modules.
+ */
+function ombublocks_update_7002() {
+  // Database changes
+  db_rename_table('block_width', 'tiles_width');
+  db_query("UPDATE {tiles_width} SET context_id = REPLACE(context_id, 'ombublocks', 'tiles')");
+
+  // Make changes to all contexts
+  $contexts = db_query("SELECT name FROM {context} WHERE tag = 'ombublocks'")->fetchCol();
+  foreach ($contexts as $name) {
+    $context = context_load($name);
+    context_delete($context);
+
+    $context->tag = 'tiles';
+    $context->name = str_replace('ombublocks', 'tiles', $context->name);
+
+    $context->reactions['tiles'] = $context->reactions['block'];
+    unset($context->reactions['block']);
+
+    context_save($context);
+  }
+
+  module_disable(array('ombublocks'));
+  drupal_uninstall_modules(array('ombublocks'));
+  module_enable(array('tiles'));
+}
