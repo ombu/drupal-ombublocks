@@ -90,4 +90,15 @@ function ombublocks_update_7002() {
   module_disable(array('ombublocks'));
   drupal_uninstall_modules(array('ombublocks'));
   module_enable(array('tiles'));
+
+  // Add correct permissions.
+  $permissions = array(
+    'administer tiles',
+    'arrange tiles',
+    'add tiles',
+  );
+  $role = user_role_load_by_name('administrator');
+  user_role_grant_permissions($role->rid, $permissions);
+  $role = user_role_load_by_name('editor');
+  user_role_grant_permissions($role->rid, $permissions);
 }
